@@ -1,0 +1,29 @@
+Release Notes - dcm4che2 - Version dcm4che-2.0.28
+
+http://www.dcm4che.org/jira/secure/ReleaseNote.jspa?projectId=10001&version=10693
+
+
+** Bug
+    * [DCM-525] - Compressed pixel data by dcm4che have an odd length
+    * [DCM-531] - NetworkConnection.addr() method caches DNS lookup result forever
+    * [DCM-545] - Tag.EnergyWindowVector is missing
+    * [DCM-548] - Dcm2Jpg does not work with JDK7
+    * [DCM-560] - Fix reading post pixel data for multiframe images 
+    * [DCM-562] - Images with pixel padding and voi lut and rescale slope not 1 with VOI lut overlapping pixel padding throw exception
+    * [DCM-563] - Pixel padding is white for inverse images with non 1 slope
+    * [DCM-564] - Applying an inverting presentation lut to an image with pixel padding inverts the padding to white
+    * [DCM-568] - DcmEcho may never exit if an exception is encountered during the echo() or close()
+
+
+** Improvement
+    * [DCM-554] - Allow DicomInputStream grow increment to be user defined.
+    * [DCM-557] - ItemParser.java: Expand the list of supported video transfer syntax UIDs to include newer formats
+    * [DCM-561] - Window Level - Ignore Smallest and LargestImagePixelValue when their values are equal
+    * [DCM-566] - DicomServiceRegistry should be pluggable
+
+
+
+
+** Task
+    * [DCM-569] - release dcm4che-2.0.28
+    * [DCM-570] - update maven-assembly-plugin to version 2.4
