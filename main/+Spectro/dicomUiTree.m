@@ -385,16 +385,21 @@ classdef dicomUiTree < handle
             
             if ~isempty(selectedNodeDx) && strcmp(h.current(selectedNodeDx).treenode.Type,'Instance') && ~isempty(h.current(selectedNodeDx).thisInfo)
                 % This is the selected node. Query DICOM information
-                txt = sprintf('SeriesDate: %s, SeriesTime: %s, AcquisitionTime: %s',h.current(selectedNodeDx).thisInfo.SeriesDate,h.current(selectedNodeDx).thisInfo.SeriesTime,h.current(selectedNodeDx).thisInfo.AcquisitionTime);
-                jMenu.add(txt);
-                
-                txt = regexprep(evalc('disp(h.current(selectedNodeDx).thisInfo.PatientName)'),'^ *','');
-                jMenu.add(txt);
-                
-                dcm = Spectro.dicom(h.current(selectedNodeDx).thisInfo);
-                coilInfo = dcm.getCoilInfo();
-                if isfield(coilInfo,'name')
-                    jMenu.add(sprintf('Coil: "%s"',coilInfo.name));
+                try
+                    txt = sprintf('SeriesDate: %s, SeriesTime: %s, AcquisitionTime: %s',h.current(selectedNodeDx).thisInfo.SeriesDate,h.current(selectedNodeDx).thisInfo.SeriesTime,h.current(selectedNodeDx).thisInfo.AcquisitionTime);
+                    jMenu.add(txt);
+                    
+                    txt = regexprep(evalc('disp(h.current(selectedNodeDx).thisInfo.PatientName)'),'^ *','');
+                    jMenu.add(txt);
+                    
+                    dcm = Spectro.dicom(h.current(selectedNodeDx).thisInfo);
+                    coilInfo = dcm.getCoilInfo();
+                    if isfield(coilInfo,'name')
+                        jMenu.add(sprintf('Coil: "%s"',coilInfo.name));
+                    end
+                catch
+                    txt = sprintf('Unexpected DICOM information format');
+                    jMenu.add(txt);
                 end
             end
         end

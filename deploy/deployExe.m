@@ -12,7 +12,7 @@ listOfPk = arrayfun(@(x) regexprep(x.name,'\.m',''),priorFiles,'uniformoutput',f
 generatePKCache(listOfPk);
 
 %% Dependencies
-% Create a list of all the .m files in the RodgersSpectroToolsV2\main
+% Create a list of all the .m files in the \main
 % folder and subfolders.
 
 topDir = fullfile(RodgersSpectroToolsRoot(),'main');

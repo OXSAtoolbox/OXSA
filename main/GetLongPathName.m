@@ -42,6 +42,11 @@ if libisloaded('kernel32'), unloadlibrary('kernel32'), end
 % loadlibrary('kernel32', 'win_edited_ctr2.h','mfilename','loadkernel_ctr2')
 
 %No compiler needed:
+%#include \getLongPathNameLibs\kernel32_thunk_pcwin64.dll
+%#include \getLongPathNameLibs\kernel32_thunk_pcwin64.exp 
+%#include \getLongPathNameLibs\kernel32_thunk_pcwin64.lib 
+%#include \getLongPathNameLibs\kernel32_thunk_pcwin64.obj 
+%#include \getLongPathNameLibs\win_edited_ctr2.h
 loadlibrary('kernel32', @loadkernel_ctr2)
 
 %Information on library functions
