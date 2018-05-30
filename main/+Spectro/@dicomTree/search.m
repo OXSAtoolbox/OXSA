@@ -9,6 +9,16 @@ function [out] = search(dicomTree, varargin)
 %        against. The function handle form of query is passed up to three
 %        arguments i.e. (instance, series, study).
 %
+% Options include:
+% first: if true, only return the first match.
+% increment: after matching, advance by this many of the "target" type
+%            (i.e. studies/series/instances).
+%            This is particularly useful for working around Siemens DICOM
+%            studies, where series 99 is a reserved number, so the
+%            numbering runs 97,98,100,101.
+%            May be a negative number (for a decrement).
+%            Error if no such item is found.
+%
 % If there is no match, an empty array is returned.
 %
 % EXAMPLES:
@@ -43,7 +53,7 @@ if ~isfield(options,'query')
 else
     if iscell(options.query) && numel(options.query) == 2
         % isequal will do string comparison or numeric comparison
-        options.query = @(x, varargin) isequal(x.(options.query{1}),(options.query{2}));
+        options.query = @(x, varargin) isequal(x.(options.query{1}),options.query{2});
     end
 end
     
@@ -51,29 +61,62 @@ if ~isfield(options,'first')
     options.first = false;
 end
 
+if ~isfield(options,'increment')
+    options.increment = 0;
+end
+
 % Blank result
 switch options.return
     case 'index'
         out = [];
     case 'study'
-        out = struct('StudyInstanceUID', {}, ...
-                     'StudyID', {}, ...
-                     'StudyDescription', {}, ...
-                     'series', {});
+        
+        fn = fieldnames(dicomTree.study)';
+        for iDx = 1:numel(fn)
+            fn{2,iDx} = {};
+        end
+        out = struct(fn{:});
+        
+%         WTC: original code. Made this procedural so that this list can be
+%         expanded in the processDicomDir function.        
+%         out = struct('StudyInstanceUID', {}, ...
+%                      'StudyID', {}, ...
+%                      'StudyDescription', {}, ...
+%                      'series', {});
     case 'series'
-        out = struct('SeriesInstanceUID', {}, ...
-                     'SeriesNumber', {}, ...
-                     'SeriesDescription', {}, ...
-                     'instance', {}, ...
-                     'SeriesDate', {}, ...
-                     'SeriesTime', {}, ...
-                     'study', {}); % CTR: Adding link to parent info too.
+        
+        fn = fieldnames(dicomTree.study(1).series)';
+        fn{end+1} = 'study';% CTR: Adding link to parent info too.
+        for iDx = 1:numel(fn)
+            fn{2,iDx} = {};
+        end
+        out = struct(fn{:});
+        
+%         WTC: original code. Made this procedural so that this list can be
+%         expanded in the processDicomDir function.
+%        out = struct('SeriesInstanceUID', {}, ...
+%                      'SeriesNumber', {}, ...
+%                      'SeriesDescription', {}, ...
+%                      'instance', {}, ...
+%                      'SeriesDate', {}, ...
+%                      'SeriesTime', {}, ...
+%                      'study', {}); % CTR: Adding link to parent info too.
     case 'instance'
-        out = struct('SOPInstanceUID', {}, ...
-                     'InstanceNumber', {}, ...
-                     'Filename', {}, ...
-                     'ImageComment', {}, ...
-                     'series', {}); % CTR: Adding link to parent info too.
+        
+        fn = fieldnames(dicomTree.study(1).series(1).instance)';
+        fn{end+1} = 'series';% CTR: Adding link to parent info too.
+        for iDx = 1:numel(fn)
+            fn{2,iDx} = {};
+        end
+        out = struct(fn{:});
+        
+%         WTC: original code. Made this procedural so that this list can be
+%         expanded in the processDicomDir function.
+%         out = struct('SOPInstanceUID', {}, ...
+%                      'InstanceNumber', {}, ...
+%                      'Filename', {}, ...
+%                      'ImageComment', {}, ...
+%                      'series', {}); % CTR: Adding link to parent info too.
     otherwise
         error('Unknown return type.')
 end
@@ -94,13 +137,26 @@ switch options.target
                     if options.query(thisInstance, thisSeries, thisStudy)
                         outDx = numel(out) + 1;
                         
+                        if options.increment == 0
+                            returnInstanceDx = instanceDx;
+                            returnInstance = thisInstance;
+                        else
+                            returnInstanceDx = instanceDx + options.increment;
+                            if returnInstanceDx >= 1 && returnInstanceDx <= numel(thisSeries.instance)
+                                returnInstance = thisSeries.instance(returnInstanceDx);
+                                returnInstance.series = rmfield(thisSeries,'instance');
+                            else
+                                error('It is impossible to apply the requested increment to a matched instance.')
+                            end
+                        end
+                        
                         switch options.return
                             case 'index'
                                 out(outDx).studyDx = studyDx;
                                 out(outDx).seriesDx = seriesDx;
-                                out(outDx).instanceDx = instanceDx;
+                                out(outDx).instanceDx = returnInstanceDx;
                             case 'instance'
-                                out(outDx) = thisInstance;
+                                out(outDx) = returnInstance;
                             case 'series'
                                 out(outDx) = thisSeries;
                             case 'study'
@@ -128,12 +184,25 @@ switch options.target
                 if options.query(thisSeries, thisStudy)
                     outDx = numel(out) + 1;
                     
+                    if options.increment == 0
+                        returnSeriesDx = seriesDx;
+                        returnSeries = thisSeries;
+                    else
+                        returnSeriesDx = seriesDx + options.increment;
+                        if returnSeriesDx >= 1 && returnSeriesDx <= numel(thisStudy.series)
+                            returnSeries = thisStudy.series(returnSeriesDx);
+                            returnSeries.study = rmfield(thisStudy,'series');
+                        else
+                            error('It is impossible to apply the requested increment to a matched series.')
+                        end
+                    end
+                    
                     switch options.return
                         case 'index'
                             out(outDx).studyDx = studyDx;
-                            out(outDx).seriesDx = seriesDx;
+                            out(outDx).seriesDx = returnSeriesDx;
                         case 'series'
-                            out(outDx) = thisSeries;
+                            out(outDx) = returnSeries;
                         case 'study'
                             out(outDx) = thisStudy;
                         otherwise
@@ -154,11 +223,23 @@ switch options.target
             if options.query(thisStudy)
                 outDx = numel(out) + 1;
                 
+                if options.increment == 0
+                    returnStudyDx = studyDx;
+                    returnStudy = thisStudy;
+                else
+                    returnStudyDx = studyDx + options.increment;
+                    if returnStudyDx >= 1 && returnStudyDx <= numel(dicomTree.study)
+                        returnStudy = dicomTree.study(returnStudyDx);
+                    else
+                        error('It is impossible to apply the requested increment to a matched study.')
+                    end
+                end
+                
                 switch options.return
                     case 'index'
-                        out(outDx).studyDx = studyDx;
+                        out(outDx).studyDx = returnStudyDx;
                     case 'study'
-                        out(outDx) = thisStudy;
+                        out(outDx) = returnStudy;
                     otherwise
                         error('Incompatible return type specified.')
                 end

@@ -1,4 +1,4 @@
-function [chemShift, linewidth, amplitude, phase] = applyModelConstraints(optimVar, func)
+function modelParams = applyModelConstraints(optimVar, func)
 % Apply constraints to the optimization variables and transforms them into
 % input parameters for makeSyntheticData.
 %
@@ -14,38 +14,11 @@ function [chemShift, linewidth, amplitude, phase] = applyModelConstraints(optimV
 % Current values for overall model parameters subject to the current vector
 % of variable parameters being varied by lsqcurvefit.
 
-chemShift = applyIt(optimVar,func.chemShift_fun);
-linewidth = applyIt(optimVar,func.linewidth_fun);
-amplitude = applyIt(optimVar,func.amplitude_fun);
-phase = applyIt(optimVar,func.phase_fun);
+fn = fieldnames(func);
 
-% for i = 1:numel(func.chemShift_fun)
-% 
-%     if isa(func.chemShift_fun{i}, 'double')
-%         chemShift(i) = func.chemShift_fun{i};
-%     else
-%         chemShift(i) = func.chemShift_fun{i}(optimVar);
-%     end
-%     
-%     if isa(func.linewidth_fun{i}, 'double')
-%         linewidth(i) = func.linewidth_fun{i};
-%     else
-%         linewidth(i) = func.linewidth_fun{i}(optimVar);
-%     end
-%     
-%     if isa(func.amplitude_fun{i}, 'double')
-%         amplitude(i) = func.amplitude_fun{i};
-%     else
-%         amplitude(i) = func.amplitude_fun{i}(optimVar);
-%     end
-%     
-%     if isa(func.phase_fun{i}, 'double')
-%         phase(i) = func.phase_fun{i};
-%     else
-%         phase(i) = func.phase_fun{i}(optimVar);
-%     end
-%     
-% end
+for fnDx = 1:numel(fn)
+modelParams.(fn{fnDx}) = applyIt(optimVar,func.(fn{fnDx}));
+end
 
 end
 

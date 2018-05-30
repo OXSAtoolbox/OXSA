@@ -33,7 +33,7 @@ values.boundsCellArray = {...
 'GPE',                                     [3,6],      [0,inf],     [0,inf],         [0,360],      [],                [];
 'PC',                                   [5,10],       [0,inf],        [0,inf],     [0,360],      [],                [];
 'PE',                                   [5,10],       [0,inf],        [0,inf],     [0,360],      [],                [];
-'NADPH',                                   [-15,-5],        [0,inf],        [0,inf],     [0,360],      [],                [];
+'NADH',                                   [-15,-5],        [0,inf],        [0,inf],     [0,360],      [],                [];
 'UDPG',                                   [-15,-5],       [0,100],        [0,inf],     [0,360],      [],                [];
 'PEP',                                   [2,5],       [0,100],        [0,inf],     [0,360],      [],                [];
 
@@ -52,7 +52,7 @@ values.IVCellArray = {...
 'GPE',                                         3.7109,           50,        2.5,               0;      
 'PC',                                          6.617,              50,       1.5,               0;               
 'PE',                                              7.104,              40,        0.8,               0;               
-'NADPH',                                       -8.251,                      50,        1,               0;         
+'NADH',                                       -8.251,                      50,        1,               0;         
 'UDPG',                                        -9.478,                      50,       0.6,               0;         
 'PEP',                                         2.2,                      50,        0.6,               0;         
 
@@ -71,7 +71,7 @@ values.PKCellArray = {...
 'GPE',                                       [],             [],                [],                  [],            [],               1,           [],                    0;
 'PC',                                            [],             [],                [],                  [],            [],               1,           [],                    0;
 'PE',                                            [],             [],                [],                  [],            [],               1,           [],                    0;
-'NADPH',                                            [],             [],                [],                  [],            [],               1,           [],                    0;
+'NADH',                                            [],             [],                [],                  [],            [],               1,           [],                    0;
 'UDPG',                                            [],             [],                [],                  [],            [],               1,           [],                    0;
 'PEP',                                            [],             [],                [],                  [],            [],               1,           [],                    0;
 
@@ -79,5 +79,5 @@ values.PKCellArray = {...
 
 %% Pass to the function which assembles the constraints into structs and saves them
 outStruct = AMARES.priorKnowledge.preparePriorKnowledge(fields,values);
-outStruct.svnVersion = '$Rev: 8177 $'; 
-outStruct.svnHeader = '$Header: https://cardiosvn.fmrib.ox.ac.uk/repos/crodgers/FromJalapeno/MATLAB/RodgersSpectroToolsV2/main/+AMARES/+priorKnowledge/PK_7T_Liver.m 8177 2015-01-07 14:42:22Z lucian $';
+outStruct.svnVersion = '$Rev: 8504 $'; 
+outStruct.svnHeader = '$Header: https://cardiosvn.fmrib.ox.ac.uk/repos/crodgers/FromJalapeno/MATLAB/RodgersSpectroToolsV2/main/+AMARES/+priorKnowledge/PK_7T_Liver.m 8504 2015-07-30 12:19:08Z lucian $';

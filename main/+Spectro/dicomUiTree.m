@@ -137,7 +137,7 @@ classdef dicomUiTree < handle
         h.hTree.getTree.scrollPathToVisible(javax.swing.tree.TreePath(root.getChildAt(0).getPath()));
 
         % "Method" for external code to access treedata
-        h.evalin = @evalin; %#ok<PROP>
+        h.evalin = @evalin;
         
         % "Method" to programatically set active node
         h.setSelection = @(varargin) setSelection_Private(h,varargin{:});
@@ -187,13 +187,18 @@ classdef dicomUiTree < handle
         % the quickest method available (see testSpeedOfDynamicProps.m).
         
         if strcmp(parentnode.Type,'Folder')
-            % Folder - expand by searching on disk
-            files = dir(parentnode.Path);
+            % In recursive mode, don't show the file structure again
+            if ~h.bRecursive
             
-            for idxB = 1:numel(files)
-                if files(idxB).isdir && ~strcmp(files(idxB).name,'.') && ~strcmp(files(idxB).name,'..')
-                    addItemToTree(ParentId,'Folder',files(idxB).name);
+                % Folder - expand by searching on disk
+                files = dir(parentnode.Path);
+                
+                for idxB = 1:numel(files)
+                    if files(idxB).isdir && ~strcmp(files(idxB).name,'.') && ~strcmp(files(idxB).name,'..')
+                        addItemToTree(ParentId,'Folder',files(idxB).name);
+                    end
                 end
+            
             end
             
             if isfield(parentnode,'dicomTree') && isa(parentnode.dicomTree,'Spectro.dicomTree')
@@ -225,31 +230,31 @@ classdef dicomUiTree < handle
         for idxB = 1:numel(treenodesDx)
             if strcmp(treedata(treenodesDx(idxB)).Type,'Folder')
                 % Matlab compiler script include:
-                %#include_exec [matlabroot,'/toolbox/matlab/icons/foldericon.gif']
+                %#include_exec [matlabroot,'\toolbox\matlab\icons\foldericon.gif']
                 iconpath = [matlabroot,'/toolbox/matlab/icons/foldericon.gif'];
                 leaf = false;
             elseif strcmp(treedata(treenodesDx(idxB)).Type,'Study')
                 % Matlab compiler script include:
-                %#include_exec [matlabroot,'/toolbox/matlab/icons/HDF_pointfieldset.gif']
+                %#include_exec [matlabroot,'\toolbox\matlab\icons\HDF_pointfieldset.gif']
                 iconpath = [matlabroot,'/toolbox/matlab/icons/HDF_pointfieldset.gif'];
                 leaf = false;
             elseif strcmp(treedata(treenodesDx(idxB)).Type,'Series')
                 % Check for ShMOLLI colour maps
                 isShmolli = 0;
                 try
-                    if regexp(treedata(treenodesDx(idxB)).Data.instance(1).ImageComment,'^(ShMOLLI color |ShMOLLI2 T1 color)','once')
+                    if regexp(treedata(treenodesDx(idxB)).Data.instance(1).ImageComments,'^(ShMOLLI color |ShMOLLI2 T1 color)','once')
                         isShmolli = 1;
                     end
                 catch
                 end
                 try
-                    if regexp(treedata(treenodesDx(idxB)).Data.instance(1).ImageComment,'^MOLLI2 T1 color','once')
+                    if regexp(treedata(treenodesDx(idxB)).Data.instance(1).ImageComments,'^MOLLI2 T1 color','once')
                         isShmolli = 2;
                     end
                 catch
                 end
                 try
-                    if regexp(treedata(treenodesDx(idxB)).Data.instance(1).ImageComment,'^SATREC T1 color','once')
+                    if regexp(treedata(treenodesDx(idxB)).Data.instance(1).ImageComments,'^SATREC T1 color','once')
                         isShmolli = 3;
                     end
                 catch
@@ -257,7 +262,7 @@ classdef dicomUiTree < handle
                 
                 if isShmolli == 1
                     % Matlab compiler script include:
-                    %#include_exec [matlabroot,'/toolbox/matlab/icons/greencircleicon.gif']
+                    %#include_exec [matlabroot,'\toolbox\matlab\icons\greencircleicon.gif']
                     iconpath = [matlabroot,'/toolbox/matlab/icons/greencircleicon.gif'];
                 elseif isShmolli == 2
                     % Matlab compiler script include:
@@ -269,13 +274,13 @@ classdef dicomUiTree < handle
                     iconpath = fullfile(fileparts(mfilename('fullpath')),'darkgreencircleicon.png');
                 else
                     % Matlab compiler script include:
-                    %#include_exec [matlabroot,'/toolbox/matlab/icons/file_open.png']
+                    %#include_exec [matlabroot,'\toolbox\matlab\icons\file_open.png']
                     iconpath = [matlabroot,'/toolbox/matlab/icons/file_open.png'];
                 end
                 leaf = false;
             elseif strcmp(treedata(treenodesDx(idxB)).Type,'Instance')
                 % Matlab compiler script include:
-                %#include_exec [matlabroot,'/toolbox/matlab/icons/pageicon.gif']
+                %#include_exec [matlabroot,'\toolbox\matlab\icons\pageicon.gif']
                 iconpath = [matlabroot,'/toolbox/matlab/icons/pageicon.gif'];
                 leaf = true;
             else
@@ -290,7 +295,7 @@ classdef dicomUiTree < handle
             % E.g. Spectroscopy code can mark spectroscopy data, ShMOLLI
             % code could mark ShMOLLI data sets.
             
-            nodes(idxB) = uitreenode('v0',treenodesDx(idxB),treedata(treenodesDx(idxB)).Description, iconpath, leaf);
+            nodes(idxB) = uitreenode('v0',treenodesDx(idxB),treedata(treenodesDx(idxB)).Description, iconpath, leaf); %#ok<AGROW>
         end
         
         if numel(treenodesDx) == 0
@@ -339,7 +344,7 @@ classdef dicomUiTree < handle
                 
             case 'Instance'
                 treedata(newId).Description = sprintf('%d: %s [%s]',data.InstanceNumber,...
-                    data.ImageComment, data.Filename);
+                    data.ImageComments, data.Filename);
                 treedata(newId).InstanceNumber = data.InstanceNumber;
                 treedata(newId).Data = data;
                 treedata(newId).dicomTree = dicomTree;
@@ -354,7 +359,7 @@ classdef dicomUiTree < handle
         treedata(newId).Type = Type;
     end
 
-    function JTree_MousePressedCallback(hObj, eventData, jMenu)
+    function JTree_MousePressedCallback(~, eventData, jMenu)
         if eventData.isMetaDown  % Right-click is like a Meta-button
             % Get the clicked node
             clickX = eventData.getX;
@@ -414,7 +419,7 @@ classdef dicomUiTree < handle
         jMenu.repaint;
     end
     
-    function JTree_KeyPressedCallback(hObj, eventData, jMenu)
+    function JTree_KeyPressedCallback(~, eventData, jMenu)
         % ENTER: Select item.
         % "/" or "?": Display right-click menu.
         
@@ -506,7 +511,7 @@ classdef dicomUiTree < handle
                 if compFunc(testPath)
                     %disp('MATCH')
                     %treedata(thisLevelDx(idxC))
-                    path(end+1) = thisLevelDx(idxC);
+                    path(end+1) = thisLevelDx(idxC); %#ok<AGROW>
                     bMatchPart = true;
                     
                     % Find tree node

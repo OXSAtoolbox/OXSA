@@ -1,6 +1,8 @@
 classdef dicomTree < handle
-% Scan a directory for DICOM files using a disk-based cache to provide
-% information regarding previously scanned files with high performance.
+% Scan a directory (or recursively scan a directory, or recursively scan a
+% cell array of directories) for DICOM files using a disk-based cache to
+% provide information regarding previously scanned files with high
+% performance.
 %
 % REPLACES processDicomDir.m and related functions.
 
@@ -73,10 +75,14 @@ methods
             options.ignoreCache = false;
         end
         
+        if ~isfield(options,'detailedRead')
+            options.detailedRead = false;
+        end
+        
         if options.recursive
-            tmp = processDicomDirRecursive(options.dir, false, options.wildcard, options.ignoreCache);
+            tmp = processDicomDirRecursive(options.dir, false, options.wildcard, options.ignoreCache, true, options.detailedRead);
         else
-            tmp = processDicomDir(options.dir, options.wildcard, options.ignoreCache);
+            tmp = processDicomDir(options.dir, options.wildcard, options.ignoreCache, true, options.detailedRead);
         end
         
         dt.path = tmp.path;

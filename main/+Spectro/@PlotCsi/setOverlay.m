@@ -5,6 +5,8 @@ function setOverlay(obj,varargin)
 % setOverlay('off'): Removes existing overlay.
 %
 % setOverlay(data,clim): Sets a new overlay.
+% setOverlay(data,clim,mask): Sets a new overlay with a mask
+% setOverlay(data,clim,mask,threshold): Sets a threshold for the overlay mask
 
 if ischar(varargin{1}) && strcmp(varargin{1},'off')
     % Disable overlay.
@@ -22,10 +24,22 @@ elseif nargin >= 2 && isnumeric(varargin{1}) && isnumeric(varargin{2})
     
     obj.overlay.rawData = varargin{1};
     obj.overlay.clim = varargin{2};
+    %Laci
+    mask=0;
+    if numel(varargin)>2;
+        obj.overlay.mask=varargin{3}; 
+        mask=1;
+        if numel(varargin)>3;
+            threshold=varargin{4};
+        else
+            threshold=0.5;
+        end
+    end
+    
     obj.overlay.rgb = interpColorMap(obj.overlay.rawData,obj.overlay.clim(1),obj.overlay.clim(2));
        
     for idx=1:numel(obj.misc.panes(end).hVoxels)
-        if isnan(obj.overlay.rgb(idx,1))
+        if ((mask == 1) && (obj.overlay.mask(idx)<threshold)) || (isnan(obj.overlay.rgb(idx,1))) %Laci
             % TRANSPARENT
             set(obj.misc.panes(end).hVoxels(idx),...
                 'FaceColor',[0 0 0],...

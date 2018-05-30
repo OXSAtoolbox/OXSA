@@ -1,4 +1,4 @@
-function [dicomData] = processDicomDir(strDir, strWildcard, bIgnoreCache, bDisplayProgress)
+function [dicomData] = processDicomDir(strDir, strWildcard, bIgnoreCache, bDisplayProgress, bDetailedHdrInfo)
 % Scan all files in a directory, find the DICOM files and sort them.
 %
 % Optionally, restrict the search to files matching a wildcard.
@@ -9,7 +9,7 @@ function [dicomData] = processDicomDir(strDir, strWildcard, bIgnoreCache, bDispl
 % TODO: Deal with cache files that have different fields.
 % TODO: Allow override of the cache filenames.
 
-% $Id: processDicomDir.m 8064 2014-10-08 04:59:41Z crodgers $
+% $Id: processDicomDir.m 11972 2018-04-26 13:21:49Z will $
 % Copyright Chris Rodgers, University of Oxford, 2010-11.
 
 % File format counter: increment to force refresh of cache files.
@@ -25,6 +25,10 @@ end
 
 if ~exist('bDisplayProgress','var')
     bDisplayProgress = true;
+end
+
+if ~exist('bDetailedHdrInfo','var')
+    bDetailedHdrInfo = false;
 end
 
 %% Canonicalise the directory case (for windows)
@@ -45,20 +49,20 @@ end
 %% Check for cache file
 cacheFile = fullfile(tempdir(),['processDicomDir_CACHE_' dicomDirHash(strDir, strWildcard) '.mat']);
 if ~bIgnoreCache
-try
-    cacheData = load(cacheFile);
-    
-    if cacheData.version == version
-        dicomData = cacheData.dicomData;
-        return
-    else
-        clear cacheData
+    try
+        cacheData = load(cacheFile);
+        
+        if cacheData.version == version
+            dicomData = cacheData.dicomData;
+            return
+        else
+            clear cacheData
+        end
+    catch ME
+        if ~strcmp(ME.identifier,'MATLAB:load:couldNotReadFile')
+            rethrow(ME);
+        end
     end
-catch ME
-    if ~strcmp(ME.identifier,'MATLAB:load:couldNotReadFile')
-        rethrow(ME);
-    end
-end
 end
 
 %% No matching cache file was found, so we must actually scan directory.
@@ -109,19 +113,19 @@ fileHashes = fileNameSizeDateHash(strDir,files);
 fileCacheFilename = fullfile(tempdir(),['processDicomDir_CACHE_FILES_' hash(strDir,'md5') '.mat']);
 fileCacheOld = [];
 if ~bIgnoreCache
-try
-    fileCacheOld = load(fileCacheFilename);
-    
-    if fileCacheOld.version ~= version
-        fileCacheOld = [];
-    else
-        fileCacheOld = fileCacheOld.fileCache;
+    try
+        fileCacheOld = load(fileCacheFilename);
+        
+        if fileCacheOld.version ~= version
+            fileCacheOld = [];
+        else
+            fileCacheOld = fileCacheOld.fileCache;
+        end
+    catch ME
+        if ~strcmp(ME.identifier,'MATLAB:load:couldNotReadFile')
+            rethrow(ME);
+        end
     end
-catch ME
-    if ~strcmp(ME.identifier,'MATLAB:load:couldNotReadFile')
-        rethrow(ME);
-    end
-end
 end
 
 if bDisplayProgress
@@ -135,7 +139,27 @@ for idx = 1:numel(files)
     
     if ~files(idx).isdir
         % Process this DICOM file
-        
+        if bDetailedHdrInfo
+            [ headersString,headersInt ] = detailedHdrInfo();
+            
+        else % WTC this is the original information that was read out of the headers.
+            headersString = {
+                'StudyInstanceUID'  ,'Study';
+                'StudyID'           ,'Study';
+                'StudyDescription'  ,'Study';
+                'SeriesInstanceUID' ,'Series';
+                'SeriesDescription' ,'Series';
+                'SeriesDate'        ,'Series';
+                'SeriesTime'        ,'Series';
+                'SOPInstanceUID'    ,'Instance';
+                'ImageComments'     ,'Instance';
+                };
+            
+            headersInt = {
+                'SeriesNumber'      ,'Series';
+                'InstanceNumber'    ,'Instance';
+                };
+        end
         if ~isempty(fileCacheOld) && fileCacheOld.isKey(fileHashes{idx})
             % Load the cached results for this particular DICOM file.
             d = fileCacheOld(fileHashes{idx});
@@ -198,28 +222,38 @@ for idx = 1:numel(files)
             end
             
             % Read required fields from the DICOM headers
-            headersString = {
-                'StudyInstanceUID';
-                'StudyID';
-                'StudyDescription';
-                'SeriesInstanceUID';
-                'SeriesDescription';
-                'SeriesDate';
-                'SeriesTime';
-                'SOPInstanceUID';
-                'ImageComments';
-                };
-            
-            headersInt = {
-                'SeriesNumber';
-                'InstanceNumber';
-                };
-            
-            for headerDx = 1:numel(headersString)
-                d.(headersString{headerDx}) = char(dcm.getString(org.dcm4che2.data.Tag.(headersString{headerDx})));
+            % Option to read out more detailed information and store in the
+            % dicomTree struct.
+            if bDetailedHdrInfo
+                [ headersString,headersInt ] = detailedHdrInfo();
+                
+            else % WTC this is the original information that was read out of the headers.
+                headersString = {
+                    'StudyInstanceUID'  ,'Study';
+                    'StudyID'           ,'Study';
+                    'StudyDescription'  ,'Study';
+                    'SeriesInstanceUID' ,'Series';
+                    'SeriesDescription' ,'Series';
+                    'SeriesDate'        ,'Series';
+                    'SeriesTime'        ,'Series';
+                    'SOPInstanceUID'    ,'Instance';
+                    'ImageComments'     ,'Instance';
+                    };
+                
+                headersInt = {
+                    'SeriesNumber'      ,'Series';
+                    'InstanceNumber'    ,'Instance';
+                    };
             end
-            for headerDx = 1:numel(headersInt)
-                d.(headersInt{headerDx}) = dcm.getInt(org.dcm4che2.data.Tag.(headersInt{headerDx}));
+            
+            for headerDx = 1:size(headersString,1)
+                d.(headersString{headerDx,1}) = char(dcm.getStrings(org.dcm4che2.data.Tag.(headersString{headerDx,1})));
+                if size(d.(headersString{headerDx,1}),1) >1
+                    d.(headersString{headerDx,1}) = cell(dcm.getStrings(org.dcm4che2.data.Tag.(headersString{headerDx,1})));
+                end
+            end
+            for headerDx = 1:size(headersInt,1)
+                d.(headersInt{headerDx,1}) = dcm.getInt(org.dcm4che2.data.Tag.(headersInt{headerDx,1}));
             end
         end
         
@@ -231,35 +265,46 @@ for idx = 1:numel(files)
         myStudyDx = find(strcmp({dicomData.study.StudyInstanceUID},d.StudyInstanceUID));
         if isempty(myStudyDx)
             myStudyDx = numel(dicomData.study) + 1;
+            
+            studyFields = headersString(strcmp(headersString(:,2),'Study'));
+            studyFields = [studyFields ; headersInt(strcmp(headersInt(:,2),'Study'))];
+            
+            seriesFields = headersString(strcmp(headersString(:,2),'Series'));
+            seriesFields = [seriesFields ; headersInt(strcmp(headersInt(:,2),'Series'))];
+            
+            instanceFields = headersString(strcmp(headersString(:,2),'Instance'));
+            instanceFields = [instanceFields ; headersInt(strcmp(headersInt(:,2),'Instance'))];
+            
             dicomData.study(myStudyDx).series = struct('SeriesInstanceUID',{},'SeriesNumber',{},'SeriesDescription',{},'instance',{});
         end
-        dicomData.study(myStudyDx).StudyInstanceUID = d.StudyInstanceUID;
-        dicomData.study(myStudyDx).StudyID = d.StudyID;
-        dicomData.study(myStudyDx).StudyDescription = d.StudyDescription;
+        
+        for iDx = 1:numel(studyFields)
+            dicomData.study(myStudyDx).(studyFields{iDx}) = d.(studyFields{iDx});
+        end
+        
         
         % Build index of series
         mySeriesInstanceUID = d.SeriesInstanceUID;
-        
         mySeriesDx = find(strcmp({dicomData.study(myStudyDx).series.SeriesInstanceUID},mySeriesInstanceUID));
         if isempty(mySeriesDx)
             mySeriesDx = numel(dicomData.study(myStudyDx).series) + 1;
             dicomData.study(myStudyDx).series(mySeriesDx).instance = struct('SOPInstanceUID',{},'InstanceNumber',{});
         end
-        dicomData.study(myStudyDx).series(mySeriesDx).SeriesInstanceUID = mySeriesInstanceUID;
-        dicomData.study(myStudyDx).series(mySeriesDx).SeriesNumber = d.SeriesNumber;
-        dicomData.study(myStudyDx).series(mySeriesDx).SeriesDescription = d.SeriesDescription;
-        dicomData.study(myStudyDx).series(mySeriesDx).SeriesDate = d.SeriesDate;
-        dicomData.study(myStudyDx).series(mySeriesDx).SeriesTime = d.SeriesTime;
+        
+        for iDx = 1:numel(seriesFields)
+            dicomData.study(myStudyDx).series(mySeriesDx).(seriesFields{iDx}) = d.(seriesFields{iDx});
+        end
+        
         
         % Build index of instances
-        mySOPInstanceUID = d.SOPInstanceUID;
-        
         % All files present are loaded, which includes duplicates.
         myInstanceDx = numel(dicomData.study(myStudyDx).series(mySeriesDx).instance) + 1;
-        dicomData.study(myStudyDx).series(mySeriesDx).instance(myInstanceDx).SOPInstanceUID = mySOPInstanceUID;
-        dicomData.study(myStudyDx).series(mySeriesDx).instance(myInstanceDx).InstanceNumber = d.InstanceNumber;
+        
+        for iDx = 1:numel(instanceFields)
+            dicomData.study(myStudyDx).series(mySeriesDx).instance(myInstanceDx).(instanceFields{iDx}) = d.(instanceFields{iDx});
+        end
         dicomData.study(myStudyDx).series(mySeriesDx).instance(myInstanceDx).Filename = d.Filename;
-        dicomData.study(myStudyDx).series(mySeriesDx).instance(myInstanceDx).ImageComment = d.ImageComments;
+        
     end
 end
 
@@ -275,7 +320,7 @@ end
 [tmp, sortDx] = sort({dicomData.study.StudyID}); % These are strings - hence different sort syntax.
 dicomData.study = dicomData.study(sortDx);
 
-fprintf('\n'); % For debugging. See how many MAT files used.
+% fprintf('\n'); % For debugging. See how many MAT files used.
 
 % Save in cache file.
 try

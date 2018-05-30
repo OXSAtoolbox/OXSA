@@ -22,7 +22,7 @@ function [dicomInfo] = SiemensCsaParse(dicomInfo)
 % Copyright: Chris Rodgers (University of Oxford), 2008-11.
 % All rights reserved.
 
-% $Id: SiemensCsaParse.m 7383 2014-02-10 15:46:48Z crodgers $
+% $Id: SiemensCsaParse.m 8861 2015-11-20 16:11:20Z crodgers $
 
 if ischar(dicomInfo)
     dicomInfo = dicominfo(dicomInfo);
@@ -99,6 +99,13 @@ function SiemensCsaParse_ReadDicomTag(strTag)
         % Store this in the csa structure
         switch vr
             case {'CS', 'LO', 'LT', 'SH', 'SS', 'UI', 'UT', 'UN'} % Strings and unknown byte string
+                % If the data length is set to -1 on the scanner, Matlab gets an out-of-memory error
+                % when reading the DICOM file unless we truncate the matrix here.
+                if vm >= 1000
+                    warning('Very large tag detected - skipping!')
+                    vm = 1000;
+                end
+                
                 if numel(data) < vm
                     % Pad if necessary. Siemens CSA format omits null strings.
                     data{vm} = '';

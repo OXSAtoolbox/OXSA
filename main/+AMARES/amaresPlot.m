@@ -2,7 +2,7 @@ function [hFig, hAx] = amaresPlot(varargin)
 % Plot the results from a Matlab AMARES.
 %
 % [hFig, hAx] = amaresPlot(fitStatus,...);
-% 
+%
 % EXAMPLE:
 % AMARES.amaresPlot(fitStatus);
 
@@ -40,7 +40,11 @@ if ~isfield(options,'plotInitial') || options.plotInitial % Default on.
 end
 
 %% Axis options
-if strcmp(options.xUnits,'PPM');
+if ~isfield(exptParams,'offset')
+    exptParams.offset = 0;
+end
+
+if strcmp(options.xUnits,'PPM')
     xAxis = exptParams.ppmAxis-exptParams.offset;
     
     xAxisLabel = '\delta / ppm';
@@ -50,8 +54,8 @@ if strcmp(options.xUnits,'PPM');
         xLimits = [-25 15];
     else
         xLimits = [ceil(min(xAxis)) floor(max(xAxis))];
-    end 
-elseif strcmp(options.xUnits,'HZ');
+    end
+elseif strcmp(options.xUnits,'HZ')
     xAxis = exptParams.freqAxis;
     xAxisLabel = '\nu / Hz';
     xLimits = [-3600 2400];
@@ -63,10 +67,10 @@ if isfield(options,'overideXAxis')
     if numel(options.overideXAxis) > 1
         xAxis = options.overideXAxis;
         xLimits = [min(xAxis) max(xAxis)];
-
+        
     elseif numel(options.overideXAxis) == 1
-         xAxis = xAxis + options.overideXAxis;
-         xLimits = xLimits + options.overideXAxis;
+        xAxis = xAxis + options.overideXAxis;
+        xLimits = xLimits + options.overideXAxis;
     end
 end
 
@@ -79,9 +83,9 @@ else
 end
 
 %% Apply prior knowledge to yield full solution
-[fitResults.chemShift, fitResults.linewidth, fitResults.amplitude, fitResults.phase] = AMARES.applyModelConstraints(xFit,constraintsCellArray);
+fitResults = AMARES.applyModelConstraints(xFit,constraintsCellArray);
 
-%% Calculate the zero and first order phase correction 
+%% Calculate the zero and first order phase correction
 if ~isfield(options,'firstOrder') || options.firstOrder % On by default
     if ~isfield(exptParams,'freqAxis')
         exptParams.freqAxis = exptParams.ppmAxis * exptParams.imagingFrequency;
@@ -98,19 +102,23 @@ if ~isfield(options,'firstOrder') || options.firstOrder % On by default
     fprintf('zeroOrderPhaseRad = %.3f\n',zeroOrderPhaseRad)
     
     % N.B. Careful... freqAxis here MUST NOT contain any frequency offset.
-    % It must be centred at the actual acqusition centre frequency.
+    % It must be centred at the actual acquisition centre frequency.
     firstOrderCorrection = exp(-1i * (zeroOrderPhaseRad + 2* pi * exptParams.freqAxis * exptParams.beginTime));
 else
     firstOrderCorrection = 1;
 end
 
-%% Calculate the fixed spectra to plot and plot them
-spectrum = specApodize(exptParams.dwellTime*(0:exptParams.samples-1).',...
-    specFft(inputFid,1).*firstOrderCorrection,options.apodization);
-fittedSpectrum =  specApodize(exptParams.dwellTime*(0:exptParams.samples-1).',...
-    specFft(AMARES.makeModelFid(xFit,constraintsCellArray,exptParams.beginTime,exptParams.dwellTime,exptParams.imagingFrequency,exptParams.samples)).*firstOrderCorrection,options.apodization);
- 
-%nophaseSpectrum = specApodize(exptParams.dwellTime*(0:size(specFft(AMARES.makeModelFid(xFit,constraintsCellArray,0,exptParams.dwellTime,exptParams.imagingFrequency,exptParams.samples)),1)-1).',specFft(exp(-1i*makeModelFid(xFit,constraintsCellArray,0,exptParams.dwellTime,exptParams.imagingFrequency,exptParams.samples)),apodAmount);
+%% Calculate the fixed spectra to plot
+
+timeAxis = exptParams.dwellTime*(0:exptParams.samples-1).';
+
+spectrum = specApodize(timeAxis, specFft(inputFid,1).*firstOrderCorrection,options.apodization);
+
+[modelFid,~,modelFids] = AMARES.makeModelFidAndJacobianReIm(xFit,constraintsCellArray,exptParams.beginTime,exptParams.dwellTime,exptParams.imagingFrequency,exptParams.samples, 'complexOutput', true);
+
+fittedSpectrum =  specApodize(timeAxis, specFft(modelFid).*firstOrderCorrection,options.apodization);
+
+%% Plot fit
 
 % Subplot positioning
 overall =  [0 0 0.05 0.02];
@@ -142,29 +150,31 @@ subplots = 1;
 %% What does the user want to plot?
 if ~isfield(options,'plotIndividual') || options.plotIndividual % On by default
     subplots = subplots + 1;
- 
+    
     % Individual peaks
     hAx(end+1) = subplotSetBorder(totalPlots,1,element,overall,subplots);
     
     indivColours = distinguishable_colors(numel(fitResults.chemShift));
     
+    
     for peakDx = 1:numel(fitResults.chemShift)
         hold on
-        indivFID = makeSyntheticData('coilAmplitudes',1,'noiseLevels',0,'bandwidth',1/exptParams.dwellTime,'imagingFrequency',exptParams.imagingFrequency,...
-        'nPoints',exptParams.samples,'beginTime', exptParams.beginTime,'linewidth',fitResults.linewidth(peakDx),'g',zeros(1,1),'chemicalShift',fitResults.chemShift(peakDx),'peakAmplitudes',fitResults.amplitude(peakDx).*exp(1i*fitResults.phase(peakDx)*pi/180));
 
-        indivSpectrum = specApodize(exptParams.dwellTime*(0:exptParams.samples-1).',specFft(indivFID.perfectFid).*firstOrderCorrection,options.apodization);
+        indivFID = modelFids(:,peakDx);
+  
+        indivSpectrum = specApodize(timeAxis,specFft(indivFID).*firstOrderCorrection,options.apodization);
         
         %Calculate the points to plot over so we don't end up with lots of
         %baselines overlapping
         [~,peakCentreIndex] =  min(abs((exptParams.ppmAxis) - fitResults.chemShift(peakDx)));
         hzPerPoint = (1/exptParams.dwellTime)/exptParams.samples;
-        plotPeakWidth = 2.5*round(fitResults.linewidth(peakDx)/hzPerPoint);
+        
+        plotPeakWidth = 2.5*round(fitResults.linewidth(peakDx)+2*sqrt(2*log(2))*fitResults.sigma(peakDx)/hzPerPoint);
         peakPlotIndex = [floor(peakCentreIndex-plotPeakWidth) ceil(peakCentreIndex+plotPeakWidth)];
         if peakPlotIndex(1)<1
             peakPlotIndex(1) = 1;
         end
-        if peakPlotIndex(2) > exptParams.samples;
+        if peakPlotIndex(2) > exptParams.samples
             peakPlotIndex(2) = exptParams.samples;
         end
         
@@ -172,14 +182,14 @@ if ~isfield(options,'plotIndividual') || options.plotIndividual % On by default
     end
     set(gca,'XDir','reverse')
     ylabel('Individual Peaks')
-    set(gca,'XLim',xLimits)    
+    set(gca,'XLim',xLimits)
     set(gca,'YLim',yLimits)
     box off
 end
 
 if ~isfield(options,'plotResidual') || options.plotResidual % Default on.
     subplots = subplots + 1;
-    residual = specApodize(exptParams.dwellTime*(0:size(options.residual ,1)-1).',specFft(options.residual ).*firstOrderCorrection,options.apodization);
+    residual = specApodize(timeAxis,specFft(options.residual ).*firstOrderCorrection,options.apodization);
     
     hAx(end+1) = subplotSetBorder(totalPlots,1,element,overall,subplots);
     
@@ -194,24 +204,14 @@ if ~isfield(options,'plotResidual') || options.plotResidual % Default on.
     ylabel('Residual')
     set(gca,'XLim',xLimits)
     set(gca,'YLim',yLimits)
-    %text(0,0,sprintf('Normal of residual = %0.3f',resNorm))
     box off
 end
 
 if ~isfield(options,'plotInitial') || options.plotInitial % Default on.
-    subplots = subplots + 1;   
-   
-    for i = 1:numel(options.pkWithLinLsq.initialValues)
-    initial_chemShift(i) = options.pkWithLinLsq.initialValues(i).chemShift;
-    initial_linewidth(i) = options.pkWithLinLsq.initialValues(i).linewidth;
-    initial_amplitude(i) = options.pkWithLinLsq.initialValues(i).amplitude;
-    initial_phase(i) = options.pkWithLinLsq.initialValues(i).phase;
-    end
+    subplots = subplots + 1;
     
-    initialFID = makeSyntheticData('coilAmplitudes',1,'noiseLevels',0,'bandwidth',1/exptParams.dwellTime,'imagingFrequency',exptParams.imagingFrequency,...
-        'nPoints',exptParams.samples,'beginTime', exptParams.beginTime,'linewidth',initial_linewidth,'g',zeros(1,numel(options.pkWithLinLsq.initialValues)),'chemicalShift',initial_chemShift,'peakAmplitudes',initial_amplitude.*exp(1i*initial_phase*pi/180));
-
-    initialSpectrum = specApodize(exptParams.dwellTime*(0:exptParams.samples-1).',specFft(initialFID.perfectFid).*firstOrderCorrection,options.apodization);
+   initialFID = AMARES.makeInitialValuesModelFid(options.pkWithLinLsq, exptParams);
+    initialSpectrum = specApodize(timeAxis,specFft(initialFID).*firstOrderCorrection,options.apodization);
     
     hAx(end+1) = subplotSetBorder(totalPlots,1,element,overall,subplots);
     plot(xAxis,real(initialSpectrum),'r-x')
@@ -232,5 +232,5 @@ xlabel(xAxisLabel)
 if numel(hAx) > 1
     set(hAx(1:end-1),'xtick',get(hAx(end),'XTick'),'xticklabel',[])
 end
-    
+
 end

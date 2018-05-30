@@ -28,7 +28,7 @@ if exist(saveFolderTmp,'dir')
     saveFolder{end+1,1} = saveFolderTmp;
 end
 
-%% Method 2. Saved in user's HOME folder...
+%% Method 2. Saved in user's HOME folder... (overrides Method 1 if present)
 strHomeDir = char(java.lang.System.getProperty('user.home'));
 % regexptranslate('escape','\/:*?"<>|')
 saveFolderTmp = fullfile(strHomeDir,'.Spectro.PlotCsi','sav',regexprep(dicomDir,'[\\/:\*\?"<>\|]','='));

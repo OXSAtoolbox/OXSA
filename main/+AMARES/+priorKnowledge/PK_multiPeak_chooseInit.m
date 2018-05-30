@@ -101,6 +101,12 @@ if isfield(options,'multiplet')
         values.PKCellArray{iDx,2} = options.multiplet{iDx}{1};%Multiplet structure
         values.PKCellArray{iDx,3} = options.multiplet{iDx}{2};%Chemshift delta
         values.PKCellArray{iDx,4} = options.multiplet{iDx}{3};%Amplitude array
+        if numel(options.multiplet{iDx})>3
+            values.boundsCellArray{iDx,1} = options.multiplet{iDx}{4};
+            values.IVCellArray{iDx,1} = options.multiplet{iDx}{4};
+            values.PKCellArray{iDx,1} = options.multiplet{iDx}{4};
+        end
+
     end    
 end
 
@@ -119,6 +125,6 @@ end
 
 %% Pass to the function which assembles the constraints into structs and saves them
 outStruct = AMARES.priorKnowledge.preparePriorKnowledge(fields,values);
-outStruct.svnVersion = '$Rev: 7657 $'; 
-outStruct.svnHeader = '$Header: https://cardiosvn.fmrib.ox.ac.uk/repos/crodgers/FromJalapeno/MATLAB/RodgersSpectroToolsV2/main/+AMARES/+priorKnowledge/PK_multiPeak_chooseInit.m 7657 2014-05-07 09:47:23Z will $';
+outStruct.svnVersion = '$Rev: 10363 $'; 
+outStruct.svnHeader = '$Header: https://cardiosvn.fmrib.ox.ac.uk/repos/crodgers/FromJalapeno/MATLAB/RodgersSpectroToolsV2/main/+AMARES/+priorKnowledge/PK_multiPeak_chooseInit.m 10363 2016-12-05 13:33:36Z lucian $';
 

@@ -31,6 +31,10 @@ theResTypes = {'ChemicalShifts','Standard_deviation_of_ChemicalShifts'...
     ,'Linewidths','Standard_deviation_of_Linewidths'...
     ,'Phases','Standard_deviation_of_Phases'};
 
+if isfield(unsortedData,'GaussianSigma')
+    theResTypes(end+1:end+2) = {'GaussianSigma' , 'Standard_deviation_of_GaussianSigma'};
+end
+
    %% Sort AMARES output into expected format.
         % Results are stored by peak name.
         for resdx=1:numel(theResTypes)

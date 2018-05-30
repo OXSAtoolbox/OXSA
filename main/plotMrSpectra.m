@@ -12,7 +12,7 @@ function [out] = plotMrSpectra(ppmaxis, spectra, varargin)
 % $Id: plotMrSpectra.m 7940 2014-08-08 00:02:03Z crodgers $
 
 %% Check input arguments
-error(nargchk(2, Inf, nargin, 'struct'))
+narginchk(2, Inf)
 
 % If no options argument, set a default value
 options = processVarargin(varargin{:});

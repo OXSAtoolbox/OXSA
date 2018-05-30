@@ -14,7 +14,7 @@ function [signal, info] = SiemensCsaReadFid(info, bDeleteFromInfo, conjMode, deb
 % Copyright: Chris Rodgers (University of Oxford), 2008-11.
 % All rights reserved.
 
-% $Id: SiemensCsaReadFid.m 7383 2014-02-10 15:46:48Z crodgers $
+% $Id: SiemensCsaReadFid.m 6154 2013-02-11 16:08:19Z crodgers $
 
 if nargin < 4 || (islogical(debugMode) && ~debugMode) || (ischar(debugMode) && ~strcmp(debugMode,'debug'))
     debugMode = false;

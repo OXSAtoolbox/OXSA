@@ -87,10 +87,14 @@ methods
     
     function deinterpolateData(obj)
         %% Converting interpolated spectra to original CSI matrix
-        fprintf('Deinterpolating coil #');
+        if ~obj.quiet
+            fprintf('Deinterpolating coil #');
+        end
         
         for coilDx = 1:numel(obj.interp.spectra)
-            fprintf('%d',coilDx);
+            if ~obj.quiet
+                fprintf('%d',coilDx);% WTC disabled.
+            end
             
             %% Invert spatial FFT (image-space --> k-space)
             bbb = obj.interp.spectra{coilDx}(:,:,:,:);
@@ -149,10 +153,12 @@ methods
             
             obj.deInterp.spectra{coilDx} = ccc;
             
-            if coilDx == numel(obj.interp.spectra)
-                fprintf('.\n');
-            else
-                fprintf(', ');
+            if ~obj.quiet
+                if coilDx == numel(obj.interp.spectra)
+                    fprintf('.\n');
+                else
+                    fprintf(', ');
+                end
             end
         end
     end

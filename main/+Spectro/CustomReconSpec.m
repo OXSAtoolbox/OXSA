@@ -30,7 +30,8 @@ methods
         %
         % Or (WTC new mode): pass a Spectro.Spec object which will be
         % cloned and can then be overridden.
-        
+        options = processVarargin(varargin{:});
+
         if isa(info_or_existingObj,'Spectro.Spec')
             % WTC new mode:
             existingObj = info_or_existingObj;
@@ -48,15 +49,22 @@ methods
             % WTC new mode:
         
             % Override the Obj called above with the relavent parts of the existing obj
+            obj.csiInterpolated = info_or_existingObj.csiInterpolated; % Bug: This removes any spectra which have already been added using the CUstomReconSpec method.
             obj.setSpectra(existingObj.spectra)
             obj.setCoil(existingObj.coilStrings,existingObj.coilIndex)
             obj.coils_Original = obj.coils;
-            
         elseif isa(info_or_existingObj,'struct') || isa(info_or_existingObj,'cell')
             % CTR original mode:
             
             % Store an unmodified copy of important variables.
             obj.coils_Original = obj.coils;
+            if isfield(options,'csiInterpolated')
+                obj.csiInterpolated = options.csiInterpolated;
+            end
+            if isfield(options,'csiShift')
+                obj.csiShift = options.csiShift;
+            end
+            
         else
             error('Unknown input type!')
         end
@@ -76,7 +84,7 @@ methods
         
         % TODO: Remove this HACK.
         origCsiShift = obj.csiShift;
-        obj.csiShift = [0 0 0];
+        obj.csiShift = [0 0 0];        
         
         %% Check new data OK
         if ~isfield(options,'newSpec')
@@ -87,11 +95,12 @@ methods
             options.newSpec = { options.newSpec };
         end
         
+        originalDimensions = size(obj.spectra{1});
+
         for newSpecDx=1:numel(options.newSpec)
-            if (~isequal(size(options.newSpec{newSpecDx}),[ obj.samples,obj.columns,obj.rows,obj.slices ])&&prod([obj.columns,obj.rows,obj.slices ])~=1) || ~isa(options.newSpec{newSpecDx},'double')
+            if (~isequal(size(options.newSpec{newSpecDx}),originalDimensions)) || ~isa(options.newSpec{newSpecDx},'double')
                 error('newSpec must be a samples x columns x rows x slices matrix of doubles or a cell array of these.')
             end
-            
         end
         
         if ~isfield(options,'newName')

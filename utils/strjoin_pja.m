@@ -25,7 +25,7 @@ function str = strjoin_pja(sep, varargin)
 %   URL:         http://home.online.no/~pjacklam
 
    % Check number of input arguments.
-   error(nargchk(1, Inf, nargin));
+  narginchk(1, Inf);
 
    % Quick exit if output will be empty.
    if nargin == 1

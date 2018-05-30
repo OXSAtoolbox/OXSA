@@ -4,7 +4,7 @@
 % Options may be passed as name, value pairs or as a struct.
 
 % Copyright Chris Rodgers, University of Oxford, 2008-14.
-% $Id: PlotCsi.m 11600 2017-07-10 14:19:07Z lucian $
+% $Id: PlotCsi.m 11980 2018-05-17 10:11:38Z ingo $
 
 classdef PlotCsi < dynamicprops
     
@@ -48,10 +48,15 @@ classdef PlotCsi < dynamicprops
     methods
         function obj = PlotCsi(theDicomPathOrTree, spectraUid, varargin)
             % Constructor
+            %
+            % Either a Spectro.dicomTree series struct or instance struct (array), or a
+            % DICOM series UID or a cell array of DICOM instance UIDs may be supplied.
+            % The data for either the entire series or for the selected instances will
+            % be returned. Data is sorted by the coil name for simpler handling later.
             
             %% Check input arguments
-            narginchk(2, Inf)
-            
+             narginchk(2, Inf)
+
             % If no options argument, set a default value
             options = processVarargin(varargin{:});
             
@@ -118,7 +123,7 @@ classdef PlotCsi < dynamicprops
             
             for refdx=1:obj.data.numRefs
                 if refdx == obj.data.numRefs
-                    obj.misc.panes(refdx).hCsiAxis = subplot('position',[0 0.3 0.8 0.7]);
+                    obj.misc.panes(refdx).hCsiAxis = subplot('position',[0 0.32 0.8 0.68]);
                 else
                     obj.misc.panes(refdx).hCsiAxis = subplot('position',[(refdx-1)*0.8/(obj.data.numRefs-1) 0 0.8/(obj.data.numRefs-1) 0.3]);
                 end
@@ -147,7 +152,16 @@ classdef PlotCsi < dynamicprops
                 
                 obj.projectVector_Prepare(refdx);
             end
-            
+            % print some information about the main slice
+            obj.misc.panes(obj.data.numRefs).textlabel=uicontrol('Parent',gcf,'Style','text',...
+                        'string',[sprintf(' orientation: %.2f %.2f %.2f, position: %.2f %.2f %.2f.', ...
+                        obj.misc.panes(refdx).geom{obj.misc.panes(refdx).nSlice }.normal, ...
+                        obj.misc.panes(refdx).geom{obj.misc.panes(refdx).nSlice }.imagePositionPatient )],...
+                        'BackgroundColor',get(obj.handles.mainWindow,'Color'),...
+                        'ForegroundColor',[0.1 0.1 0.1],...
+                        'tag','slice_info', ...
+                        'horiz','center','units','norm','position',[0 0.3 0.8 0.02]);
+            %set(handle.slice_info,'string',{'Reference image ',obj.misc.panes(refdx).nSlice });
             % TODO: There is a bug when the first slice of a stack doesn't intersect
             % another reference image but other slices do. Needs to be handled better.
             
@@ -199,8 +213,8 @@ classdef PlotCsi < dynamicprops
             % (The function obj.getNextUiPosition handles stacking these.)
             
             % Version information
-            svnRevision = regexp('$Revision: 11600 $',['\$' 'Revision: ([0-9]+) \$'],'tokens','once');
-            svnDate = regexp('$Date: 2017-07-10 15:19:07 +0100 (Mon, 10 Jul 2017) $',['^\$' 'Date: ([0-9-]+ [0-9]+:[0-9]+)'],'tokens','once');
+            svnRevision = regexp('$Revision: 11980 $',['\$' 'Revision: ([0-9]+) \$'],'tokens','once');
+            svnDate = regexp('$Date: 2018-05-17 11:11:38 +0100 (Thu, 17 May 2018) $',['^\$' 'Date: ([0-9-]+ [0-9]+:[0-9]+)'],'tokens','once');
             
             % "Inactive" tweak documented at: http://www.mathworks.com/support/solutions/en/data/1-158CEG/index.html?product=ML&solution=1-158CEG
             obj.handles.versionLabel=uicontrol('Parent',gcf,'Style','text',...

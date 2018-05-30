@@ -226,17 +226,34 @@ methods
             % Find the handle for the data cursor; set the update function
             dcmH = datacursormode(gcf);
             set(dcmH,'UpdateFcn',@(aa,ab) Spectro.util.dicomCursorUpdateFcn(aa,ab,h.current.img))
-            
-            if ~isfield(h.current.thisInfo,'ImageComments')
-                h.current.thisInfo.ImageComments = '(No ImageComments)';
+            image_base=h.current.thisInfo;
+            if ~isfield(h.current.thisInfo,'ImageOrientationPatient')
+                spectro_base=h.current.thisInfo.csa;
+                base=spectro_base;
+                size=[base.SpectroscopyAcquisitionPhaseColumns base.SpectroscopyAcquisitionPhaseRows base.SpectroscopyAcquisitionOutofplanePhaseSteps];
+            else
+                base=image_base;
+                size=[base.Columns base.Rows base.csa.SliceResolution];
             end
-            if ~isfield(h.current.thisInfo,'SliceLocation')
+            
+            if ~isfield(base,'ImageComments')
+                image_base.ImageComments = '()';
+            end
+            if ~isfield(base,'SliceLocation')
                 h.current.thisInfo.SliceLocation = '(No SliceLocation)';
             end
-            strtodisp = strcat([h.current.thisInfo.ImageComments, ' Slice location: ', num2str(h.current.thisInfo.SliceLocation)]);
+            
+            v=base.ImageOrientationPatient;
+            
+            
+            strtodisp = strcat([image_base.ImageComments, ...
+                sprintf('size %dx%dx%d ',size), ...
+                sprintf(' Sl.loc.: %.2f', base.SliceLocation), ...
+                ' orientation: ',h.current.thisInfo.PatientPosition, ...
+                sprintf(', %.2f %.2f %.2f',cross(v(1:3),v(4:6))) ]);
             set(h.hLabelCommand,'String',strtodisp);
         else
-            set(h.hLabelCommand,'String',h.current.treenode.Description);
+                set(h.hLabelCommand,'String',h.current.treenode.Description);
         end
     end
 
@@ -330,14 +347,13 @@ methods
             else
                 % Reset the contrast to default values
                 try
-                clim(1) = double(min(h.current.img(:).'));
-                clim(2) = double(max(h.current.img(:).'));
+                    clim(1) = double(min(h.current.img(:).'));
+                    clim(2) = double(max(h.current.img(:).'));
                 catch
                     % There is no current image, so set default values
                     % manually
                     clim = [0 4096];
                 end
-
             end
             
             h.contrast.spinnerA.jhSpinner.setValue((clim(1)+clim(2))/2);

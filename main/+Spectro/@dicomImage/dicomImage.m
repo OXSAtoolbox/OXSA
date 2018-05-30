@@ -7,6 +7,7 @@ classdef dicomImage < Spectro.dicom
 % Public properties
 properties
     image; % Make image public so that it can be touched up to illustrate analysis.
+    imageRescaled;
 end
 
 properties(SetAccess=protected)
@@ -36,7 +37,9 @@ methods
         
         % Load pixel data
         obj.image = myDicomRead(obj.info{1}.Filename);
-
+        if isfield(obj.info{1},'RescaleSlope') % WTC - some dicoms (e.g. Philips use these fields to encode unit conversions)
+            obj.imageRescaled = double(obj.image)*obj.info{1}.RescaleSlope+obj.info{1}.RescaleIntercept;
+        end
         obj.columns = size(obj.image,1);
         obj.rows = size(obj.image,2);
     end
@@ -45,6 +48,14 @@ methods
         % N.B. For Siemens SPECTROSCOPY DATA this calculation would be INCORRECT.
         % See Spectro.Spec's sliceNormal code for details.
         ret = cross(obj.imageOrientationPatient(:,1),obj.imageOrientationPatient(:,2));
+        
+        % WTC 01/02/2018: I think that like the SPECTROSCOPY data Siemens
+        % applies this correction to the normal vector for images.
+        % I will test further before commiting this change.
+%         ret = cross(obj.imageOrientationPatient(:,1),obj.imageOrientationPatient(:,2));
+%         if -min(ret) > max(ret)
+%             ret = -ret; % Reverse sign of normal vector.
+%         end
     end
 
     function [ret] = unitVecs(obj)

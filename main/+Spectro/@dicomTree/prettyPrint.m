@@ -6,7 +6,7 @@ function prettyPrint(dicomTree, bShowInWindow)
 %                 the Matlab command window.
 
 % Copyright Chris Rodgers, University of Oxford, 2008-13.
-% $Id: prettyPrint.m 6108 2013-02-04 14:24:21Z crodgers $
+% $Id: prettyPrint.m 11967 2018-04-12 18:57:07Z will $
 
 error(nargchk(1, 2, nargin, 'struct'))
 
@@ -42,8 +42,20 @@ for nStudy=1:numel(dicomTree.study)
     
     out('\nDICOM Study #<a href="matlab:clipboard(''copy'',''%s'')">%s</a>: "%s" [%s]\n', thisStudy.StudyInstanceUID, thisStudy.StudyID, thisStudy.StudyDescription, thisDir);
     
+    % Sort by series number so that they are always printed in order.
+    seriesNumbers = [thisStudy.series.SeriesNumber];
+    [~,sortIndex] = sort(seriesNumbers);
+    
     for nSeries=1:numel(thisStudy.series)
-        thisSeries = thisStudy.series(nSeries);
+        thisSeries = thisStudy.series(sortIndex(nSeries));
+        
+        if isempty(thisSeries.SeriesTime)
+            thisSeries.SeriesTime = 'XXXXXX';
+        end
+        
+        if isempty(thisSeries.SeriesDate)
+            thisSeries.SeriesDate = 'XXXXXXXX';
+        end
         
         out('DICOM series <a href="matlab:clipboard(''copy'',''%s'')">%d</a> (<a href="matlab:clipboard(''copy'',''%s'')">path</a>): %s:%s:%s on %s/%s/%s, "%s" [',...
         thisSeries.SeriesInstanceUID,...
@@ -53,14 +65,32 @@ for nStudy=1:numel(dicomTree.study)
         thisSeries.SeriesDate(7:8),thisSeries.SeriesDate(5:6),thisSeries.SeriesDate(1:4),...
         thisSeries.SeriesDescription)
     
-        for nInstance=1:numel(thisSeries.instance)
-            if nInstance == 1
-                strSep = '';
-            else
-                strSep = ' ';
+        % WTC added this check which limits the number of instances which
+        % will be printed to screen to instancePrintLimit. It indicates that more instances are
+        % present by printing XXX ... numInstances.
+        instancePrintLimit = 200;
+        if numel(thisSeries.instance)>instancePrintLimit 
+            for nInstance=1:instancePrintLimit
+                if nInstance == 1
+                    strSep = '';
+                else
+                    strSep = ' ';
+                end
+
+                out('%s<a href="matlab:clipboard(''copy'',''%s'')">%d</a>',strSep,thisSeries.instance(nInstance).SOPInstanceUID,thisSeries.instance(nInstance).InstanceNumber);
             end
-            
-            out('%s<a href="matlab:clipboard(''copy'',''%s'')">%d</a>',strSep,thisSeries.instance(nInstance).SOPInstanceUID,thisSeries.instance(nInstance).InstanceNumber);
+            out('...')
+            out('%s<a href="matlab:clipboard(''copy'',''%s'')">%d</a>',strSep,thisSeries.instance(numel(thisSeries.instance)).SOPInstanceUID,thisSeries.instance(numel(thisSeries.instance)).InstanceNumber);
+        else
+            for nInstance=1:numel(thisSeries.instance)
+                if nInstance == 1
+                    strSep = '';
+                else
+                    strSep = ' ';
+                end
+
+                out('%s<a href="matlab:clipboard(''copy'',''%s'')">%d</a>',strSep,thisSeries.instance(nInstance).SOPInstanceUID,thisSeries.instance(nInstance).InstanceNumber);
+            end
         end
    
         out(']\n');

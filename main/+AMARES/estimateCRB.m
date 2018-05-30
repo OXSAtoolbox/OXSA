@@ -39,6 +39,7 @@ function [CRB] = estimateCRB(imagingFrequency, dwellTime, beginTime, noiseVarian
 mP = AMARES.compute_P_Matrix(xFit,constraintsCellArray);
 mDTD = AMARES.compute_DT_times_D_Matrix(xFit,constraintsCellArray,beginTime,dwellTime,imagingFrequency,2048);
 
+
 Fishernum = real(mP'*mDTD*mP)/noiseVariance;
 
 % TODO: We need to handle the situation of a singular fisher information
@@ -54,7 +55,7 @@ Fishernum = real(mP'*mDTD*mP)/noiseVariance;
 % Zvika Ben-Haim and Yonina C. Eldar
 
 lastwarn('');
-CRB.covariance = mP*inv(Fishernum)*mP';
+CRB.covariance = mP*(Fishernum\mP');
 [~, msgid] = lastwarn;
 if strcmp(msgid,'MATLAB:singularMatrix')
     % Run the Moore-Penrose pseudo inverse instead!
@@ -70,12 +71,13 @@ end
 
 CRB_together = sqrt(diag(CRB.covariance)).'; % SDs for each parameter.
 
-CRB.chemShift = CRB_together(1:4:end);
-CRB.linewidth = CRB_together(2:4:end);
-CRB.amplitude = CRB_together(3:4:end);
-CRB.phase = CRB_together(4:4:end);
+[params, numParams] = AMARES.getCanonicalOrdering();
+
+for pDx = 1:numParams
+
+CRB.(params{pDx}) = CRB_together(pDx:numParams:end);
+
+end
 
 return
 
-% This old method is not right for all types of constraint!
-%[CRBchemShift, CRBlinewidth, CRBamplitude, CRBphase] = AMARES.applyModelConstraints(CRB, constraintsCellArray);

@@ -18,12 +18,12 @@
 % Options may be passed as name, value pairs or as a struct.
 
 % Copyright Chris Rodgers, University of Oxford, 2009
-% $Id: strGrep.m 11600 2017-07-10 14:19:07Z lucian $
+% $Id: strGrep.m 10955 2017-03-28 13:04:32Z lucian $
 
 function [strMatches] = strGrep(strSearchRE,strIn,varargin)
 
 %% Check input arguments
-narginchk(2, Inf)
+narginchk(2,Inf)
 
 % If no options argument, set a default value
 options = processVarargin(varargin{:});

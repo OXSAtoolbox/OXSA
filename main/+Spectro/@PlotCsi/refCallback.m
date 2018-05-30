@@ -1,4 +1,4 @@
-function refCallback(obj,hObject,eventdata,refdx)
+    function refCallback(obj,hObject,eventdata,refdx)
 
 nSlice = hObject.getValue;
 
@@ -10,7 +10,11 @@ set(obj.misc.panes(refdx).hImages,'Visible','off');
 set(obj.misc.panes(refdx).hImages(nSlice),'Visible','on')
 
 obj.misc.panes(refdx).nSlice = nSlice;
-
+if refdx == obj.data.numRefs 
+    set(obj.misc.panes(refdx).textlabel,'string', ...
+        [sprintf(' orientation: %.2f %.2f %.2f, position: %.2f %.2f %.2f.',obj.misc.panes(refdx).geom{nSlice}.normal, ...
+        obj.misc.panes(refdx).geom{nSlice}.imagePositionPatient )]);
+end
 % Update the plotted intersections
 obj.updatePlaneIntersect()
 

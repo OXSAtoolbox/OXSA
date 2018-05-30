@@ -18,7 +18,7 @@
 % $Id: rainbowcolour.m 6911 2013-08-23 11:06:13Z crodgers $
 
 function huesOut = rainbowcolour(axish,varargin)
-error(nargchk(0,3,nargin))
+narginchk(0,3)
 
 if nargin<1
     axish=gca;

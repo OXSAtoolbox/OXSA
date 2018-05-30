@@ -1,7 +1,7 @@
-function dicomData = processDicomDirRecursive(strPath, parallelRecursion, strWildcard, bIgnoreCache, bDisplayProgress)
+function dicomData = processDicomDirRecursive(strPath, parallelRecursion, strWildcard, bIgnoreCache, bDisplayProgress, bDetailedHdrInfo)
 % Return dicomData structure for all DICOM files in a folder recursively.
 %
-% strPath - folder to search.
+% strPath - folder to search or cell array of folders to search.
 %
 % Any further arguments (e.g. wildcard) are passed unchanged to
 % processDicomDir().
@@ -28,8 +28,16 @@ if ~exist('bDisplayProgress','var')
     bDisplayProgress = true;
 end
 
+if ~exist('bDetailedHdrInfo','var')
+    bDetailedHdrInfo = false;
+end
+
 % Perform a depth-first traversal of folders under strPath
-dirList{1} = strPath;
+if iscell(strPath)
+    dirList = strPath(:);
+else
+    dirList{1} = strPath;
+end
 
 idx = 1;
 while idx <= numel(dirList)
@@ -53,7 +61,7 @@ end
 dicom = cell(size(dirList));
 if parallelRecursion
     parfor idx=1:numel(dirList)
-        dicom{idx} = processDicomDir(dirList{idx},strWildcard, bIgnoreCache, false);
+        dicom{idx} = processDicomDir(dirList{idx},strWildcard, bIgnoreCache, false, bDetailedHdrInfo);
     end
 else
     if bDisplayProgress
@@ -63,7 +71,7 @@ else
     end
 
     for idx=1:numel(dirList)
-        dicom{idx} = processDicomDir(dirList{idx},strWildcard, bIgnoreCache, false);
+        dicom{idx} = processDicomDir(dirList{idx},strWildcard, bIgnoreCache, false, bDetailedHdrInfo);
         if bDisplayProgress
             progressbar(idx/numel(dirList));
         end

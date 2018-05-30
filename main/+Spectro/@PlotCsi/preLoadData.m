@@ -2,13 +2,13 @@ function [data] = preLoadData(dicomPathOrTree, spectraUid, options)
 % Load the CSI data sets specified in spectraUid into memory in a format
 % that can be used by the PlotCsi GUI.
 %
-% Either a DICOM series UID or a cell array of DICOM instance UIDs may be
-% supplied. The data for either the entire series or for the selected
-% instances will be returned. Data is sorted by the coil name for simpler
-% handling later.
+% Either a Spectro.dicomTree series struct or instance struct (array), or a
+% DICOM series UID or a cell array of DICOM instance UIDs may be supplied.
+% The data for either the entire series or for the selected instances will
+% be returned. Data is sorted by the coil name for simpler handling later.
 
 % Copyright Chris Rodgers, University of Oxford, 2008-11.
-% $Id: preLoadData.m 8053 2014-10-06 03:22:11Z crodgers $
+% $Id: preLoadData.m 8469 2015-07-16 14:28:24Z crodgers $
 
 %% Load DICOM tree
 if ischar(dicomPathOrTree)
@@ -19,6 +19,20 @@ end
 clear dicomPathOrTree
 
 %% Evaluate the UIDs supplied
+% If a Spectro.dicomTree SERIES or INSTANCE struct is passed, decode that
+if isstruct(spectraUid)
+    if isfield(spectraUid,'SeriesInstanceUID')
+        % SERIES
+        spectraUid = spectraUid.SeriesInstanceUID;
+    elseif isfield(spectraUid,'SOPInstanceUID')
+        % INSTANCE(s)
+        spectraUid = {spectraUid.SOPInstanceUID};
+    else
+        error('Bad spectraUid - see help for details.')
+    end
+end     
+
+% Now load the data
 if iscell(spectraUid)
     % Load only the requested individual spectra
     for instanceDx = 1:numel(spectraUid)

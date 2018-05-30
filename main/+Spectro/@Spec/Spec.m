@@ -56,6 +56,7 @@ properties(Transient,SetAccess=private)
     coils;
     coilIndex;
     coilStrings;
+    coilStringsUncombined;
 end
 
 methods(Access=private)
@@ -66,7 +67,9 @@ end
 
 methods(Access=protected)
     function setSpectraWorker(obj,src,newval)
-        fprintf('%s.setSpectra: src = %s, newval = %s\n',mfilename('class'),src.Name,evalc('disp(newval)'))
+        if ~obj.quiet
+            fprintf('%s.setSpectra: src = %s, newval =%s\n',mfilename('class'),src.Name,evalc('disp(newval)')) %wtc diabled this output which identified the class and dimensionality of the loaded spectra  
+        end
         obj.spectra = newval;
     end
 end
@@ -126,7 +129,7 @@ methods
         obj = obj@Spectro.dicom(varargin{:});
         
         %% Check DICOM file for coil, identify possible coils, select and store data for coil.
-%         obj.coilInfo = obj.getCoilInfo();
+        obj.coilInfo = obj.getCoilInfo();
         
         %% Sort coils
         info = reshape(obj.info,[],1);
@@ -162,6 +165,9 @@ methods
 
     function info = sortCoils(obj, unsortedInfo)
         %% Load the FIDs specified in info
+        %
+        % N.B. Any special cases here MUST BE REPLICATED INTO THE
+        % getMrProtocolCoilDetails method.
         numCoils = numel(unsortedInfo);
         
         for filedx=1:numCoils
@@ -170,8 +176,14 @@ methods
             else
                 unsortedImageComments{filedx} = '';
             end
-                        
-            unsortedCoilNames{filedx} = unsortedInfo{filedx}.csa.ImaCoilString;
+               
+            if (strcmp(unsortedInfo{filedx}.Private_0029_1009, 'syngo MR E11') && ~strcmp(unsortedImageComments{filedx}, '_u'))
+                temp = strfind(unsortedImageComments{filedx}, '_');
+                %unsortedCoilNames{filedx} = substr(unsortedImageComments{filedx}, temp(2));
+                unsortedCoilNames{filedx} = unsortedImageComments{filedx}(temp(2) + 1:end);
+            else
+                unsortedCoilNames{filedx} = unsortedInfo{filedx}.csa.ImaCoilString;
+            end;
             
             % Workaround for broken ICE code on the 7T
             if isfield(unsortedInfo{filedx}.csa,'MagneticFieldStrength')
@@ -208,6 +220,8 @@ methods
             end
             
             % Special case for the Oxford 7T 16-element array
+            % N.B. Any special cases here MUST BE REPLICATED INTO THE
+            % getMrProtocolCoilDetails method.
             if isfield(obj.coilInfo,'name') && strcmp(obj.coilInfo.name,'OXF_7T_31P_Rapid16chArray')
                 % And fix the stupid (non-alphabetical) coil numbering from Rapid!!
                 unsortedCoilNames{filedx} = regexprep(unsortedCoilNames{filedx},'^CH','C0');
@@ -217,6 +231,12 @@ methods
         %% Sort the coils by name if required.
         % Sort uncombined coils
         idx_uncombined = strcmp(unsortedImageComments,'_u');
+        if (sum(idx_uncombined) == 0)
+            % Try to see whether these spectra were collected on a
+            % VE line scanner. Uncombined spectra comments originating from VE line start
+            % with _upw_
+            idx_uncombined = strncmp(unsortedImageComments, '_upw_', 5);
+        end;
         [tmp1,idx1] = sort(unsortedCoilNames);
         
         coilIndexUncomb = idx1(idx_uncombined(idx1)); % Raw coils
@@ -231,11 +251,54 @@ methods
         info = unsortedInfo(obj.coilIndex);
         obj.coilStrings = arrayfun(@(x,y) [x{1} y{1}],unsortedCoilNames(obj.coilIndex),unsortedImageComments(obj.coilIndex),'UniformOutput',false);
         
+        obj.coilStringsUncombined = unsortedCoilNames(coilIndexUncomb);
+        % If single-element acquired, then include this too...
+        if obj.getMrProtocolCoilDetails.numElements == 1 && isempty(obj.coilStringsUncombined)
+            obj.coilStringsUncombined = obj.coilStrings(1);
+        end
+        
         if obj.debug
             for tmp=1:numel(obj.coilIndex)
                 fprintf('Remapped coils %d (raw) ==> %d (new) [%s]\n',obj.coilIndex(tmp),tmp,obj.coilStrings{tmp});
             end
         end
+    end
+    
+    function [out] = getMrProtocolCoilDetails(obj)
+        % Load details of the Rx elements used from the ASCII protocol.
+        % This means that information is available for all connected Rx
+        % channels from the DICOM file for any ONE channel.
+        
+        % N.B. Any special cases here MUST BE REPLICATED INTO THE
+        % sortCoils method.
+        
+        % Load all channel names and sort them as per WSVD_v4 code in
+        % IceSpectroConfigurator.cpp.
+        out = getMrProtocolCoilDetails@Spectro.dicom(obj);
+        
+        % Special case for Rapid 16ch coil
+        if isfield(obj.coilInfo,'name') && strcmp(obj.coilInfo.name,'OXF_7T_31P_Rapid16chArray')
+            % And fix the stupid (non-alphabetical) coil numbering from Rapid!!
+            out.tElement_TwixOrder = regexprep(out.tElement_TwixOrder,'^CH','C0');
+        end
+        
+        % Compute the ordering that Spectro.obj WOULD APPLY
+        [~,out.coilIndex_for_SpectroSpecOrder] = sort(out.tElement_TwixOrder);
+         
+%         %% Extra output for debugging... compare to DICOM headers
+%         % Compare against the DICOM coil strings
+%         out.coilStrings_TwixOrder(obj.coilIndex) = obj.coilStrings;
+%         
+%         % Extract only the uncombined DICOM coil strings (i.e. those not
+%         % ending with "_u")
+%         out.coilStrings_TwixOrder_onlyUncombined = regexp(out.coilStrings_TwixOrder,'(^.*)_u','tokens','once');
+%         for idx=numel(out.coilStrings_TwixOrder_onlyUncombined):-1:1
+%             if isempty(out.coilStrings_TwixOrder_onlyUncombined{idx})
+%                 out.coilStrings_TwixOrder_onlyUncombined(idx) = [];
+%             else
+%                 out.coilStrings_TwixOrder_onlyUncombined(idx) = out.coilStrings_TwixOrder_onlyUncombined{idx};
+%             end
+%         end
     end
     
     
@@ -368,11 +431,11 @@ methods
         digits = ceil(log10(prod(obj.size)));
     end
     
-    [retval] = calcVoxelCentreCoordsForSlice(obj, slice);
-    [retval] = calcVoxelVertexCoordsForSlice(obj, slice);
-    
-    [fulldata] = calcVoxelCentreCoords(obj, voxel);
-    [fulldata] = calcVoxelVertexCoords(obj, voxel);
+%     [retval] = calcVoxelCentreCoordsForSlice(obj, slice);
+%     [retval] = calcVoxelVertexCoordsForSlice(obj, slice);
+%     
+%     [fulldata] = calcVoxelCentreCoords(obj, voxel);
+%     [fulldata] = calcVoxelVertexCoords(obj, voxel);
 
     function s = saveobj(obj)
         s.version = 2; % This must match the version in loadobj() below.
@@ -428,6 +491,29 @@ methods
             obj.options.overrideSpectra = newSpec;
         end
     end
+    
+    % WTC: Methods for calling the _static methods which have been made static
+    % so they are accessible for the synthSpec class. The purpose of these
+    % methods is to keep compatability with the large amounts of code which
+    %  call the original methods. This has to be done as the syntax
+    %  obj.staticMethod(2nd argument here) does not pass the class object automatically. 
+    
+    function [retval] = calcVoxelCentreCoordsForSlice(obj, slice)
+        [retval] = Spectro.Spec.calcVoxelCentreCoordsForSlice_static(obj, slice);
+    end
+    
+    function [retval] = calcVoxelVertexCoordsForSlice(obj, slice)
+        [retval] = Spectro.Spec.calcVoxelVertexCoordsForSlice_static(obj, slice);
+    end
+    
+    function [fulldata] = calcVoxelCentreCoords(obj, voxel)
+        [fulldata] = Spectro.Spec.calcVoxelCentreCoords_static(obj, voxel);
+    end
+    
+    function [fulldata] = calcVoxelVertexCoords(obj, voxel)
+        [fulldata] = Spectro.Spec.calcVoxelVertexCoords_static(obj, voxel);
+    end
+    
 end
 
 methods (Static)
@@ -449,6 +535,14 @@ methods (Static)
             error('Error loading Spectro.Spec object data - missing version ID.')
         end
     end
+    
+    
+    [retval] = calcVoxelCentreCoordsForSlice_static(obj, slice);
+    [retval] = calcVoxelVertexCoordsForSlice_static(obj, slice);
+    
+    [fulldata] = calcVoxelCentreCoords_static(obj, voxel);
+    [fulldata] = calcVoxelVertexCoords_static(obj, voxel);
+
 end
 end
 

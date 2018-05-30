@@ -1,4 +1,4 @@
-function [fulldata] = calcVoxelVertexCoordsForSlice(obj, slice)
+function [fulldata] = calcVoxelVertexCoordsForSlice_static(obj, slice)
 % Calculate coordinates of the vertices of the spectroscopy voxels in the
 % DICOM coordinate system for the specified slice.
 %

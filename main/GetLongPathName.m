@@ -43,9 +43,9 @@ if libisloaded('kernel32'), unloadlibrary('kernel32'), end
 
 %No compiler needed:
 %#include \getLongPathNameLibs\kernel32_thunk_pcwin64.dll
-%#include \getLongPathNameLibs\kernel32_thunk_pcwin64.exp 
-%#include \getLongPathNameLibs\kernel32_thunk_pcwin64.lib 
-%#include \getLongPathNameLibs\kernel32_thunk_pcwin64.obj 
+%#include \getLongPathNameLibs\kernel32_thunk_pcwin64.exp
+%#include \getLongPathNameLibs\kernel32_thunk_pcwin64.lib
+%#include \getLongPathNameLibs\kernel32_thunk_pcwin64.obj
 %#include \getLongPathNameLibs\win_edited_ctr2.h
 loadlibrary('kernel32', @loadkernel_ctr2)
 
@@ -54,7 +54,7 @@ loadlibrary('kernel32', @loadkernel_ctr2)
 % libfunctions('kernel32','-full')
 
 %% Get full filename
-% 
+%
 unicode_input = typecast(unicode2native([inFile],'UTF-16'),'uint16');
 unicode_input = [unicode_input(2:end) 0]; % remove BOM and NUL terminate
 unicode_input2 = typecast(unicode2native(repmat(' ',1,1000),'UTF-16'),'uint16');
@@ -84,7 +84,11 @@ unicode_input2 = [unicode_input2(2:end) 0]; % remove BOM and NUL terminate
     unicode_input2,...
     1000);
 
-longFullFilename = native2unicode(typecast([65279 c(1:a)],'uint8'),'UTF-16');
+if a ~= 0
+    longFullFilename = native2unicode(typecast([65279 c(1:a)],'uint8'),'UTF-16');
+else
+    error('The specified directory does not exist.')
+end
 
 % N.B. This is still not guaranteed to have correct CASE...
 longFullFilename = lower(longFullFilename);

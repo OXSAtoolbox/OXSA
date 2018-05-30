@@ -1,15 +1,20 @@
-function identifyDicomFilesInDir(strDir, strWildcard, bShowInWindow)
+function identifyDicomFilesInDir(strDir, strWildcard, bShowInWindow, bRecursive)
 % Scan all DICOM files and check which sequence they are from.
 %
 % strDir - folder to scan.
 % strWildcard (optional) - restrict to scanning only certain files.
-% bShowInWindow - display results in a web browser window rather than in
-% the Matlab command window.
+% bShowInWindow (optional) - display results in a web browser window rather
+%                            than in the Matlab command window.
+% bRecursive (optional) - process folder recursively.
 
 % Copyright Chris Rodgers, University of Oxford, 2008-11.
-% $Id: identifyDicomFilesInDir.m 6257 2013-03-12 14:24:53Z crodgers $
+% $Id: identifyDicomFilesInDir.m 8072 2014-11-05 17:23:03Z crodgers $
 
-error(nargchk(1,3,nargin,'struct'))
+error(nargchk(1,4,nargin,'struct'))
+
+if nargin < 4
+    bRecursive = false;
+end
 
 if nargin < 3
     bShowInWindow = false;
@@ -20,7 +25,7 @@ if nargin < 2
 end
 
 if ischar(strDir)
-    dicomTree = Spectro.dicomTree('dir',strDir,'wildcard',strWildcard);
+    dicomTree = Spectro.dicomTree('dir',strDir,'wildcard',strWildcard,'recursive',bRecursive);
 elseif isa(strDir,'Spectro.dicomTree')
     dicomTree = strDir;
 else

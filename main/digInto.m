@@ -13,6 +13,7 @@
 %
 % "searchcontent" : if true, search the content of fields in addition to
 %                   their names
+% "maxdepth": maximum depth to iterate (defaults to Inf, i.e. unlimited)
 %
 % Example:
 %
@@ -23,7 +24,7 @@
 % digInto(xx,'[Oo]ne')
 
 % Copyright Chris Rodgers, University of Oxford, 2008-13
-% $Id: digInto.m 6814 2013-07-31 12:57:40Z crodgers $
+% $Id: digInto.m 11583 2017-07-06 12:47:53Z lucian $
 
 % Inspired by code from: http://code.activestate.com/recipes/576489/
 %                Fri, 5 Sep 2008 by kaushik.ghose
@@ -31,17 +32,17 @@
 function [strOut, bFound] = digInto(target, strSearchRE, varargin)
 
 %% Check input arguments
-error(nargchk(1, Inf, nargin, 'struct')) %#ok<NCHKN>
+narginchk(1, Inf) 
 
 if nargin < 2
     strSearchRE = '.';
 end
 
 % If no options argument, set a default value
-options = processVarargin(varargin{:});
+options = structLowercaseFieldnames(processVarargin(varargin{:}));
 
 % Scan through options for unknown fields and set defaults
-optionsDefaults = {'debug', 0; 'level', 0; 'searchcontent', 0};
+optionsDefaults = {'debug', 0; 'level', 0; 'searchcontent', 0; 'maxdepth', Inf};
 
 fn = fieldnames(options);
 for idx=1:numel(fn)
@@ -53,6 +54,18 @@ for idx=1:size(optionsDefaults,1)
     if ~isfield(options,optionsDefaults{idx,1})
         options.(optionsDefaults{idx,1}) = optionsDefaults{idx,2};
     end
+end
+
+if options.level > options.maxdepth
+    if strcmp('.',strSearchRE)
+        bFound = 1; % Special case. Display all.
+        tabs = repmat(' ',1,4*options.level);
+        strOut = sprintf('%s%s\n',tabs,'...skipped...');
+    else
+        bFound = 0; % Don't search to this depth, so as if nothing matched.
+        strOut = '';
+    end
+    return
 end
 
 newOptions = options;

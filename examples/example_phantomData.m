@@ -38,6 +38,8 @@ voxelNum = 3;
 %% Set the prior knowledge.
 
 pk = AMARES.priorKnowledge.PK_SinglePeak;
+% OR e.g. :
+% pk = AMARES.priorKnowledge.PK_SinglePeak_voigt;
 
 %% Set plot handle
 % 0 to not show plot, 1 to give lowest unused figure handle, or a

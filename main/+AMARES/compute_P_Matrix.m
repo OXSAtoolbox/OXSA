@@ -1,6 +1,5 @@
 function [P] = compute_P_Matrix(optimVar, func)
 % Compute P matrix for CRB determination.
-
 % Apply constraints to the optimization variables and transforms them into
 % input parameters for makeSyntheticData.
 %
@@ -16,18 +15,19 @@ function [P] = compute_P_Matrix(optimVar, func)
 % Current values for overall model parameters subject to the current vector
 % of variable parameters being varied by lsqcurvefit.
 
-% TODO: Somehow we need a rule that prescribes the order of parameters...
-
 % The P matrix has dp_i / dp'_j entries linking independent and full
 % (including constrained) parameter list.
 
-% chemShift = applyIt(optimVar,func.chemShift_fun);
-% linewidth = applyIt(optimVar,func.linewidth_fun);
-% amplitude = applyIt(optimVar,func.amplitude_fun);
-% phase = applyIt(optimVar,func.phase_fun);
-
 % Combine into canonical ordering...
-P = applyIt(optimVar,[func.chemShift_fun; func.linewidth_fun; func.amplitude_fun; func.phase_fun]);
+params = AMARES.getCanonicalOrdering();
+
+for fDx =1:numel(params)
+    
+    funcs(fDx,:) = func.(params{fDx}); %#ok<AGROW>
+    
+end
+
+P = applyIt(optimVar,funcs);
 
 end
 
@@ -41,7 +41,7 @@ for idx=1:numel(funcs)
         case '@(a)a;'
             % All zeros. Nothing to change. % da/dx(z) = 0 where a = const.
         case '@(x,a)x(a);'
-            thisOut(idx,thisFunc{2}) = 1; % dx(a)/dx(z) = delta_az
+            thisOut(idx,thisFunc{2}) = 1; %#ok<*SPRIX> % dx(a)/dx(z) = delta_az
         case '@(x,a,b)x(a)+b;'
             thisOut(idx,thisFunc{2}) = 1; % dx(a)/dx(z) = delta_az
         case '@(x,a,b)x(a)*b;'

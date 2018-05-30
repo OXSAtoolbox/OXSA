@@ -8,7 +8,7 @@ function [derivedParamVal, CRB] = estimateDerivedParamAndCRB(pk, xFit, constrain
 % ..._lw is a peak linewidth
 % ..._am is a peak amplitude
 % ..._ph is a peak phase
-% 
+%
 % extraParamStr is a cell array of strings specifying external (non-fitted)
 %        parameters e.g. saturation factors.
 %
@@ -36,21 +36,24 @@ end
 
 multipletComponentToPeakIndex = AMARES.getMultipletComponentToPeakIndex(pk);
 
-[chemShift, linewidth, amplitude, phase] = AMARES.applyModelConstraints(xFit, constraintsCellArray);
+modelParams = AMARES.applyModelConstraints(xFit, constraintsCellArray);
 
 % Check for cached version of the CRB formulae - [] is returned if no
 % cache entry matches.
 [derivedParam_MFunc, Jsym_MFunc] = AMARES.estimateDerivedParamAndCRB_loadCached(pk, constraintsCellArray, derivedParamStr, extraParamStr);
+
+[params, numParams, endStr, plainStr] = AMARES.getCanonicalOrdering();
 
 if ~isempty(derivedParam_MFunc) && ~isempty(Jsym_MFunc)
     % Cache hit - use pure Matlab
     
     % The fits
     for idx=1:size(multipletComponentToPeakIndex,2)
-        allParamsStruct.([multipletComponentToPeakIndex{1,idx} '_cs']) = chemShift(idx);
-        allParamsStruct.([multipletComponentToPeakIndex{1,idx} '_lw']) = linewidth(idx);
-        allParamsStruct.([multipletComponentToPeakIndex{1,idx} '_am']) = amplitude(idx);
-        allParamsStruct.([multipletComponentToPeakIndex{1,idx} '_ph']) = phase(idx);
+        
+        for pDx = 1:numParams
+            allParamsStruct.([multipletComponentToPeakIndex{1,idx} endStr{pDx}]) = modelParams.(params{pDx})(idx);
+        end
+        
     end
     
     for idx = 1:numel(extraParamStr)
@@ -90,10 +93,12 @@ else
     
     allParams = cell(size(multipletComponentToPeakIndex,2),5);
     for idx=1:size(multipletComponentToPeakIndex,2)
-        allParams(4*idx-3,:) = {[multipletComponentToPeakIndex{1,idx} '_cs'], sym([multipletComponentToPeakIndex{1,idx} '_cs']), multipletComponentToPeakIndex{1,idx}, 'cs', chemShift(idx)};
-        allParams(4*idx-2,:) = {[multipletComponentToPeakIndex{1,idx} '_lw'], sym([multipletComponentToPeakIndex{1,idx} '_lw']), multipletComponentToPeakIndex{1,idx}, 'lw', linewidth(idx)};
-        allParams(4*idx-1,:) = {[multipletComponentToPeakIndex{1,idx} '_am'], sym([multipletComponentToPeakIndex{1,idx} '_am']), multipletComponentToPeakIndex{1,idx}, 'am', amplitude(idx)};
-        allParams(4*idx-0,:) = {[multipletComponentToPeakIndex{1,idx} '_ph'], sym([multipletComponentToPeakIndex{1,idx} '_ph']), multipletComponentToPeakIndex{1,idx}, 'ph', phase(idx)};
+        
+        for pDx = 1:numParams
+            allParams(numParams*idx-(numParams-pDx),:) = {[multipletComponentToPeakIndex{1,idx} endStr{pDx}], sym([multipletComponentToPeakIndex{1,idx} endStr{pDx}]), multipletComponentToPeakIndex{1,idx}, plainStr{pDx}, modelParams.(params{pDx})(idx)};
+        end
+        
+        
     end
     
     % Now apply this to the formula(e)
@@ -127,25 +132,25 @@ else
 end
 
 % %% Specific example...
-% 
+%
 % % PCr / gATP ratio
 % syms am1 am2 am3 am4 am5 am6 am7 am8 am9 am10 am11
 % am = [am1 am2 am3 am4 am5 am6 am7 am8 am9 am10 am11];
 % ratio = am8 / (am6 + am7)
 % tmpP = jacobian(ratio,am)
-% 
+%
 % tmpPnum = subs(tmpP,am,amplitude)
-% 
+%
 % mPratioExtra = zeros(1,44);
 % mPratioExtra(3:4:end) = tmpPnum
-% 
+%
 % % Calculate the final CRB only
 % sqrt(diag(mP*inv(Fishernum)*mP'))
-% 
+%
 % % Calculate the derived param CRB only
 % sqrt(diag(mPratioExtra*mP*inv(Fishernum)*mP'*mPratioExtra'))
-% 
+%
 % sqrt(diag(mPratioExtra*CRB.covariance*mPratioExtra'))
-% 
+%
 % %%
 % opengl software; figure(10101);clf;pcolorV2('x',1:44,'y',1:44,'c',abs(CRB.covariance));colormap(jet(256));colorbar;caxis([0 100])

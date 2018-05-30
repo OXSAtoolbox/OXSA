@@ -13,7 +13,7 @@ function [newSpectra] = phaseCorrect(ppmaxis, spectra, options)
 %                      phase correction
 
 % Copyright Chris Rodgers, University of Oxford, 2008.
-% $Id: phaseCorrect.m 3402 2010-06-22 15:48:24Z crodgers $
+% $Id: phaseCorrect.m 11757 2017-11-04 12:33:01Z lucian $
 
 %% Check input arguments
 narginchk(3, 3)

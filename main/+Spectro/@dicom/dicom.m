@@ -7,6 +7,7 @@ classdef dicom < handle
     % Public properties
     properties
         debug = false;
+        quiet = false; % Property which is set on construction to reduce command window output in this and many child classes. WTC 01/02/2018
     end
     
     properties(SetAccess=protected)
@@ -33,16 +34,43 @@ classdef dicom < handle
             
             obj.options = processVarargin(varargin{:});
             
+            % Set verbosity
+            if isfield(obj.options,'quiet') && quiet
+                obj.quiet = true;
+            end
+            
             % Requested to load data from DICOM files directly
             if iscellstr(whatToLoad)
                 strFiles = whatToLoad;
                 
                 for filedx=1:numel(whatToLoad)
-                    obj.info{filedx} = SiemensCsaParse(dicominfo(strFiles{filedx}));
+                    % Attempt to start handling dicom files which come from
+                    % different manufacturers. This is only from an imaging
+                    % pov, and not using enhanced DICOM format. WTC 02/01/2018
                     
-                    fprintf('Loaded file %d --> protocol (%s (%s)), coil "%s"\n',...
-                        filedx,obj.info{filedx}.SeriesDescription,obj.info{filedx}.ProtocolName,...
-                        obj.info{filedx}.csa.ImaCoilString);
+                    dcmInfo = dicominfo(strFiles{filedx});
+                    type = identifyDICOMType(dcmInfo);
+                    switch type
+                        case 'Siemens'
+                            obj.info{filedx} = SiemensCsaParse(dcmInfo);
+                            fprintf('Loaded file %d --> protocol (%s (%s)), coil "%s"\n',...
+                                filedx,obj.info{filedx}.SeriesDescription,obj.info{filedx}.ProtocolName,...
+                                obj.info{filedx}.csa.ImaCoilString);
+                            
+                        case 'Philips'
+                            if exist('PhilipsParse.m','file') == 2
+                            obj.info{filedx} = PhilipsParse(dcmInfo);
+                            fprintf('Loaded file %d --> protocol (%s (%s)), coil "%s"\n',...
+                                filedx,obj.info{filedx}.SeriesDescription,obj.info{filedx}.ProtocolName,...
+                                '(Unknown philips coil encoding)');
+                            else
+                             error('Philips DICOM reading is not currently included in the OXSA release');
+                            end
+                        otherwise
+                            error('Unrecognised DICOM source');
+                    end
+                    
+                    
                 end
             elseif iscell(whatToLoad)
                 obj.info = whatToLoad;
@@ -106,7 +134,7 @@ classdef dicom < handle
             % Pass '-v' as a flag to dump the voltages for each pulse.
             
             tmp = regexp(obj.info{1}.csa.MrPhoenixProtocol,...
-                '^sTXSPEC\.aRFPULSE\[([0-9]+)\]\.tName *= ""(.*)""$',...
+                '^sTXSPEC\.aRFPULSE\[([0-9]+)\]\.tName\s*=\s+""(.*)""$',...
                 'tokens','dotexceptnewline','lineanchors');
             
             ids = [];
@@ -147,7 +175,7 @@ classdef dicom < handle
             if ~isnumeric(strNameOrNumber)
                 % Find numeric ID if not provided.
                 tmp = regexp(obj.info{1}.csa.MrPhoenixProtocol,...
-                    ['^sTXSPEC\.aRFPULSE\[([0-9]+)\]\.tName *= ""' regexptranslate('escape',strNameOrNumber) '""$'],...
+                    ['^sTXSPEC\.aRFPULSE\[([0-9]+)\]\.tName\s*=\s+""' regexptranslate('escape',strNameOrNumber) '""$'],...
                     'tokens','dotexceptnewline','lineanchors');
                 if numel(tmp) == 0
                     error('Cannot find a pulse with that name.')
@@ -162,7 +190,7 @@ classdef dicom < handle
             end
             
             tmp = regexp(obj.info{1}.csa.MrPhoenixProtocol,...
-                ['^sTXSPEC\.aRFPULSE\[' num2str(strNameOrNumber) '\]\.flAmplitude *= ([0-9\.-]+)$'],...
+                ['^sTXSPEC\.aRFPULSE\[' num2str(strNameOrNumber) '\]\.flAmplitude\s*=\s+([0-9\.-]+)$'],...
                 'tokens','dotexceptnewline','lineanchors');
             
             if isempty(tmp)
@@ -176,12 +204,52 @@ classdef dicom < handle
         function plugIDs = getCoilPlugIds(obj)
             % Extract and decode coil plug codes from the DICOM headers.
             
-            tmp = strGrep('aulPlugId',obj.info{1}.csa.MrPhoenixProtocol);
+            % Check software version
+            if isfield(obj.info{1},'Manufacturer')
+                manufacturer = obj.info{1}.Manufacturer;
+            else
+                manufacturer = '';
+            end;
+            if isfield(obj.info{1},'ManufacturerModelName')
+                manufacturerModelName = obj.info{1}.ManufacturerModelName;
+            else
+                manufacturerModelName = '';
+            end;
             
-            for idx=1:numel(tmp)
-                [a plugIDs{idx}] = strtok(tmp{idx},'= ');
-                plugIDs{idx} = strrep(plugIDs{idx},' = ','');
-            end
+            switch manufacturer
+                case 'SIEMENS'
+                    if isfield(obj.info{1},'SoftwareVersion')
+                        SoftwareVersion = obj.info{1}.SoftwareVersion;
+                    else
+                        SoftwareVersion = '';
+                    end;
+                    switch SoftwareVersion
+                        case {'syngo MR E11'}
+                            tmp = strGrep('sCoilSelectMeas.CoilPlugs.Plug.*IdPart\[',obj.info{1}.csa.MrPhoenixProtocol);
+                            % TODO - load coil ID numbers
+                            
+                            % FEM: tentative coil ID loading. Not sure if
+                            % producing the desired output
+                            for idx = 1:numel(tmp)
+                                [a plugIDs{idx}] = strtok(tmp{idx}, '= ');
+                                plugIDs{idx} = ['0x' lower(dec2hex(str2num(strrep(plugIDs{idx}, ' = ', ''))))];
+                            end;
+                            %plugIDs = {};
+                        case {'syngo MR B17';'syngo MR B13 4VB13A'} % VB-series
+                            tmp = strGrep('aulPlugId',obj.info{1}.csa.MrPhoenixProtocol);
+                            
+                            for idx=1:numel(tmp)
+                                [a plugIDs{idx}] = strtok(tmp{idx},'= ');
+                                plugIDs{idx} = strrep(plugIDs{idx},' = ','');
+                            end;
+                        otherwise
+                            warning('Unsupported software version (%s).',SoftwareVersion);
+                            plugIDs = {};
+                    end;
+                otherwise
+                    warning('Cannot decode coil information for a %s %s system.',manufacturer,manufacturerModelName);
+                    plugIDs = {};
+            end;
         end
         
         function strProt = getMrProtocol(obj)
@@ -192,7 +260,7 @@ classdef dicom < handle
             % clipboard('copy',obj.getMrProtocol())
             
             tmpProt = regexp(obj.info{1}.csa.MrPhoenixProtocol,...
-                '\n(### ASCCONV BEGIN ###\n.*\n### ASCCONV END ###)"','tokens','once');
+                '\n(### ASCCONV BEGIN.*? ###\n.*\n### ASCCONV END ###)"','tokens','once');
             
             if isempty(tmpProt)
                 error('Protocol not found!')
@@ -202,7 +270,8 @@ classdef dicom < handle
         end
         
         function [res] = getMrProtocolString(obj,strToFind)
-            tmp = obj.regexpMrProtocol(['^' regexptranslate('escape',strToFind) ' *= ""(.*)""$'],'tokens','once');
+            tmp = obj.regexpMrProtocol(['^' regexptranslate('escape',strToFind) '\s*=\s+"+(.*?)"+$'],'tokens','once');
+            
             if ~isempty(tmp)
                 res = tmp{1};
             else
@@ -211,7 +280,9 @@ classdef dicom < handle
         end
         
         function [res] = getMrProtocolNumber(obj,strToFind)
-            tmp = obj.regexpMrProtocol(['^' regexptranslate('escape',strToFind) ' *= (.*)$'],'tokens','once');
+            
+            tmp = obj.regexpMrProtocol(['^' regexptranslate('escape',strToFind) '\s*= (.*)$'],'tokens','once');
+            
             if isempty(tmp)
                 res = 0;
             else
@@ -285,7 +356,10 @@ classdef dicom < handle
             % Force a DeviceSerialNumber field (to avoid errors with anonymised DICOM files)
             % TODO: Need to allow override of the DeviceSerialNumber for proper detection of
             %       the coils employed for anonymised DICOM scans.
-            if ~isfield(obj.info{1},'DeviceSerialNumber'), obj.info{1}.DeviceSerialNumber = ''; end
+            if ~isfield(obj.info{1},'DeviceSerialNumber')
+                obj.info{1}.DeviceSerialNumber = '';
+            end
+            
             
             try
                 coilInfoTemp = CoilGeometryFiles.searchCoils(obj.info{1}.DeviceSerialNumber,obj.info{1}.SeriesDate,obj.info{1}.SeriesTime,plugIDs,obj.debug);
@@ -299,25 +373,119 @@ classdef dicom < handle
                 end
             else
                 % TODO: Default to a default coil at this point?
-                %             warning('RodgersSpectroTools:CoilNotFound','No matching coil identified');
-                
-                % No warning for GitHub OXSA toolbox, as coil information
-                % is unnecessary.
-                
+                if exist('CoilGeometryFiles.searchCoils', 'file') == 2
+                    warning('RodgersSpectroTools:CoilNotFound','No matching coil identified [serial=%s,date=%s,time=%s,plugs=%s]',...
+                        obj.info{1}.DeviceSerialNumber,...
+                        obj.info{1}.SeriesDate,...
+                        obj.info{1}.SeriesTime,...
+                        joinrow2str(plugIDs(~(strcmp(plugIDs,'0xff') | strcmp(plugIDs,'0xee'))),'%s',','));
+                end
             end
         end
         
+        
+        % DEPRECATED. This function doesn't understand how the Siemens ICE code
+        % SORTS the channels by Rx channel number before entering
+        % ICE/TWIX/DICOM.
         function unsortedCoilNames = getUnsortedCoilString(obj)
-            keepLooping = true;
-            iDx = 0;
-            while keepLooping == true
-                unsortedCoilNames{iDx+1} = obj.getMrProtocolString(['asCoilSelectMeas[0].asList[' num2str(iDx) '].sCoilElementID.tElement']);
-                
-                if strcmp(unsortedCoilNames{iDx+1},'')
-                    keepLooping = false
-                    unsortedCoilNames(iDx+1) =[];
+            error('Deprecated function - use getMrProtocolCoilDetails instead.')
+            %         keepLooping = true;
+            %         iDx = 0;
+            %         while keepLooping == true
+            %             unsortedCoilNames{iDx+1} = obj.getMrProtocolString(['asCoilSelectMeas[0].asList[' num2str(iDx) '].sCoilElementID.tElement']);
+            %
+            %             if strcmp(unsortedCoilNames{iDx+1},'')
+            %                 keepLooping = false;
+            %                 unsortedCoilNames(iDx+1) =[];
+            %             end
+            %             iDx = iDx +1;
+            %        end
+        end
+        
+        function out = getInstanceNumbers(obj,strmode)
+            % Pull out the DICOM InstanceNumber for each instance in this
+            % object.
+            %
+            % Optionally, if strmode is 'uncombined', only do this until
+            % COMBINED data is seen.
+            
+            if ~exist('strmode','var') || isempty(strmode)
+                for idx=1:numel(obj.info)
+                    out(idx) = obj.info{idx}.InstanceNumber;
                 end
-                iDx = iDx +1;
+            elseif strcmpi(strmode,'uncombined')
+                numElements = obj.getMrProtocolCoilDetails.numElements;
+                for idx=1:numel(obj.info)
+                    if numElements > 1 ... % Single-Rx gets special treatment in ICE. Grrr...
+                            && ~isempty(regexp(obj.info{idx}.csa.ImaCoilString,'^[tC]:','once'))
+                        % Found combined data - stop looping.
+                        break
+                    end
+                    out(idx) = obj.info{idx}.InstanceNumber;
+                end
+            else
+                error('Unknown strmode.')
+            end
+        end
+        
+        function [out] = getMrProtocolCoilDetails(obj)
+            % Load details of the Rx elements used from the ASCII protocol.
+            % This means that information is available for all connected Rx
+            % channels from the DICOM file for any ONE channel.
+            % Check software version
+            if isfield(obj.info{1},'Manufacturer')
+                manufacturer = obj.info{1}.Manufacturer;
+            else
+                manufacturer = '';
+            end;
+            if isfield(obj.info{1},'ManufacturerModelName')
+                manufacturerModelName = obj.info{1}.ManufacturerModelName;
+            else
+                manufacturerModelName = '';
+            end;
+            
+            switch manufacturer
+                case 'SIEMENS'
+                    if isfield(obj.info{1},'SoftwareVersion')
+                        SoftwareVersion = obj.info{1}.SoftwareVersion;
+                    else
+                        SoftwareVersion = '';
+                    end
+                    switch SoftwareVersion
+                        case {'syngo MR E11'}
+                            for idx = 1:obj.getMrProtocolNumber('sProtConsistencyInfo.lMaximumNofRxReceiverChannels')
+                                lRxChannelConnected_MrProtOrder(idx) = obj.getMrProtocolNumber(sprintf('sCoilSelectMeas.aRxCoilSelectData[0].asList[%d].lRxChannelConnected', idx - 1));
+                                tElement_MrProtOrder{idx} = obj.getMrProtocolString(sprintf('sCoilSelectMeas.aRxCoilSelectData[0].asList[%d].sCoilElementID.tElement', idx - 1));
+                            end;
+                            
+                            tElement_MrProtOrder(lRxChannelConnected_MrProtOrder == 0) = [];
+                            lRxChannelConnected_MrProtOrder(lRxChannelConnected_MrProtOrder == 0) = [];
+                            
+                            [out.lRxChannelConnected_TwixOrder, rxChannelConnectedDx] = sort(lRxChannelConnected_MrProtOrder);
+                            out.tElement_TwixOrder = tElement_MrProtOrder(rxChannelConnectedDx);
+                            
+                            out.numElements = numel(out.tElement_TwixOrder);
+                        case {'syngo MR B17'; 'syngo MR B13 4VB13A'} % VB-series
+                            % Load all channel names and sort them as per WSVD_v4 code in
+                            % IceSpectroConfigurator.cpp.
+                            for idx=1:obj.getMrProtocolNumber('sProtConsistencyInfo.lMaximumNofRxReceiverChannels')
+                                lRxChannelConnected_MrProtOrder(idx) = obj.getMrProtocolNumber(sprintf('asCoilSelectMeas[0].asList[%d].lRxChannelConnected',idx-1));
+                                tElement_MrProtOrder{idx} = obj.getMrProtocolString(sprintf('asCoilSelectMeas[0].asList[%d].sCoilElementID.tElement',idx-1));
+                            end;
+                            
+                            tElement_MrProtOrder(lRxChannelConnected_MrProtOrder == 0) = [];
+                            lRxChannelConnected_MrProtOrder(lRxChannelConnected_MrProtOrder == 0) = [];
+                            
+                            [out.lRxChannelConnected_TwixOrder,rxChannelConnectedDx]=sort(lRxChannelConnected_MrProtOrder);
+                            out.tElement_TwixOrder = tElement_MrProtOrder(rxChannelConnectedDx);
+                            
+                            % Useful in other functions
+                            out.numElements = numel(out.tElement_TwixOrder);
+                        otherwise
+                            error('Unsupported software version (%s). Cannot extract coil details from MR protocol.', SoftwareVersion)
+                    end
+                otherwise
+                    error('Cannot extract coil details from MR protocol for a %s %s system.', manufacturer, manufacturerModelName)
             end
         end
         

@@ -39,6 +39,14 @@ else
 end
 
 options = processVarargin(varargin{:});
+if isfield(options,'quiet') 
+    quiet=options.quiet;
+else 
+    quiet=0;
+end
+
+% Store svn revision
+svnVersion = getSubversionRevision(fileparts(mfilename('fullpath')));
 
 
 % Check options OK
@@ -84,7 +92,14 @@ else
 end
 
 % CSI shift
-csiShiftStr = regexprep(num2str(obj.csiShift),'\s*','_');
+if ~isempty(obj)
+    % Spectro.PlotCsi input
+    csiShift = obj.csiShift;
+else
+    % Spectro.Spec input
+    csiShift = [0 0 0];
+end
+csiShiftStr = regexprep(num2str(csiShift),'\s*','_');
 
 %% Generate a suitable directory name
 if isfield(spec(1).info{1}.PatientName,'GivenName')
@@ -148,7 +163,7 @@ end
 
 if strcmp(options.type, 'slice') && ~isfield(options,'slices')
     if isempty(obj)
-        error('options.slice must be specified for a Spectro.Spec object export.')
+        error('options.slices must be specified for a Spectro.Spec object export.')
     else
         options.slices = obj.csiSlice;
     end
@@ -161,6 +176,9 @@ if strcmp(options.type, 'voxel') && ~isfield(options,'voxels')
         options.voxels = {obj.voxel};
         options.slices = 0;
     end
+    
+elseif strcmp(options.type, 'voxel') && isfield(options,'voxels')
+    options.slices = 0;
 end
 
 if strcmp(options.type, 'slice') || strcmp(options.type, 'all')
@@ -250,7 +268,7 @@ if all(cellfun(@(x) exist(x,'file'),amaresOutputFilenameMat)) ...
        if isempty(savedCSIShift) || strcmp(savedCSIShift,'')
            warning('No CSIshift saved in past data, forcing rerun!')
            forceRerun = true;
-       elseif ~all(str2num(savedCSIShift{1}) == obj.csiShift)
+       elseif ~all(str2num(savedCSIShift{1}) == csiShift) % Spectro.Spec input doesn't have obj.csiShift
              warning('The CSI shift does not match the saved data! Fitting again...')  
              forceRerun = true;
        end
@@ -299,10 +317,12 @@ end
 if ~isfield(options.prior,'pk')
     % Prior not supplied - so prompt user for a .m file to run or a
     % .mat file to load.
-    priorFiles = dir(fullfile(options.prior.dir,'pk*.m'));
+    priorFiles = dir(fullfile(options.prior.dir,'PK*.m')); % WTC 230418. PK in caps for case sensitive macs.
     priorFunctionNames = arrayfun(@(x) regexprep(x.name,'\.m',''),priorFiles,'uniformoutput',false);
     if ~isfield(options.prior,'default')
-              
+        if isfield(obj.misc,'sequenceParams') && isfield(obj.misc.sequenceParams,'defaultPK')
+           options.prior.default = obj.misc.sequenceParams.defaultPK;
+        else        
             if abs(7.0 - spec(1).info{1}.csa.MagneticFieldStrength) < 0.2
                 % 7T data
                 options.prior.default = 'PK_7T_Cardiac';
@@ -312,7 +332,7 @@ if ~isfield(options.prior,'pk')
             else
                 warning('No default prior for this field strength.');
             end
-     
+        end
     end
     priorInitial = find(strcmp(options.prior.default,priorFunctionNames));
     
@@ -368,7 +388,7 @@ end
 % Expected offset in ppm
 if isfield(options,'expectedOffset')
     expectedOffset = options.expectedOffset;
-elseif isprop(obj,'misc') && isfield(obj.misc,'sequenceParams') && isfield(obj.misc.sequenceParams,'expectedoffset')
+elseif ~isempty(obj) && isprop(obj,'misc') && isfield(obj.misc,'sequenceParams') && isfield(obj.misc.sequenceParams,'expectedoffset')
     expectedOffset = obj.misc.sequenceParams.expectedoffset;
 else
     prompt = {'Enter expected offset (ppm):'};
@@ -383,6 +403,14 @@ end
 % Calculate begintime
 if isfield(options,'beginTime')
     beginTime = options.beginTime;
+elseif ~isempty(obj) && isfield(obj.misc,'sequenceParams') && isfield(obj.misc.sequenceParams,'pulseData')
+    if isempty(obj.misc.sequenceParams.pulseData) % AHP special case
+        % Load hard-coded value
+        beginTime = obj.misc.sequenceParams.beginTime;
+    else
+        % Compute with a Bloch simulation
+        beginTime = calculateBeginTime(obj.misc.sequenceParams,spec,pk,expectedOffset);
+    end
 else
     prompt = {'Enter begin time (ms):'};
     dlg_title = 'Input for begin time';
@@ -416,7 +444,9 @@ results = [];
 BATP_counter = 0;
 for sdx = 1:numel(options.slices)
     for vdx = 1:numel(options.voxels{sdx})
-        fprintf('sdx = %d/%d.\tvdx = %d/%d.\tTime = %.1fs\n',sdx,numel(options.slices),vdx,numel(options.voxels{sdx}),etime(clock(),startTime));
+        if quiet==0
+            fprintf('sdx = %d/%d.\tvdx = %d/%d.\tTime = %.1fs\n',sdx,numel(options.slices),vdx,numel(options.voxels{sdx}),etime(clock(),startTime));
+        end
         
         voxelNum = options.voxels{sdx}(vdx);
         
@@ -455,7 +485,7 @@ for sdx = 1:numel(options.slices)
         end
         
         %% Sort AMARES output into expected format.
-        results = AMARES.sortFitData(results,rawFit,obj.data.spec,pk,rawFit.fitStatus.exptParams.beginTime,'fitOptions',options,'voxel',vdx);
+        results = AMARES.sortFitData(results,rawFit,spec,pk,rawFit.fitStatus.exptParams.beginTime,'fitOptions',options,'voxel',vdx);
         
         %% Check that fitted parameters did not hit bound limits.
         % This is to check that the fit was not limited unduly by the prior
@@ -567,8 +597,7 @@ for sdx = 1:numel(options.slices)
         fprintf(fileID,'%d \n',results.fitStatus{iDx}.noise_var);
     end
     
-    currentCsiShift = obj.csiShift;
-    fprintf(fileID,'CSI Shift vector: %0.2f %0.2f %0.2f\n',currentCsiShift(1),currentCsiShift(2),currentCsiShift(3));
+    fprintf(fileID,'CSI Shift vector: %0.2f %0.2f %0.2f\n',csiShift(1),csiShift(2),csiShift(3));
     
     fprintf(fileID,'FIDs hash: %s\n',fids_md5{sdx});
     
