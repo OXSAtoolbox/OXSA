@@ -10,4 +10,4 @@ format compact
 addpath(genpath(fileparts(mfilename('fullpath'))))
 
 
-disp('Completed startup.m')
+disp('OXSA version 2.1: completed startup.m')
