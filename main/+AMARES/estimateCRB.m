@@ -55,8 +55,15 @@ Fishernum = real(mP'*mDTD*mP)/noiseVariance;
 % Zvika Ben-Haim and Yonina C. Eldar
 
 lastwarn('');
+
+% Don't show message for singular matrix
+warn_state = warning('off' , 'MATLAB:singularMatrix');
+warn_state_c = onCleanup(@() warning(warn_state)); % reset when this is cleared
 CRB.covariance = mP*(Fishernum\mP');
 [~, msgid] = lastwarn;
+clear warn_state_c warn_state
+
+% But still if there was a singular matrix warning then
 if strcmp(msgid,'MATLAB:singularMatrix')
     % Run the Moore-Penrose pseudo inverse instead!
     CRB.covariance = mP*pinv(Fishernum)*mP';
