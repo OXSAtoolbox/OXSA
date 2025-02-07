@@ -39,7 +39,10 @@ In the /test/MonteCarlo/ folder there are several scripts and data files that sh
 ## Version information
 
 v1.0 - 2017-07-10 - Initial release
+
 v2.0 - 2018-05-30 - Restructuring to allow simpler inclusion of additional prior knowledge. Added the ability to fit using Voigt lineshapes.
 					Some folder reorganisation so that the OXSA code can be run as part of the OCMR in-house processing pipeline. Several other
 					minor changes to update all code to match current in-house versions.
+
 v2.1 - 2024-07-08 - Update contact details and amend the name.
+
