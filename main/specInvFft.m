@@ -16,7 +16,7 @@ if nargin<2
     dim = 1;
 end
 
-fid = ifft(fftshift(spec,dim),[],dim)*size(spec,dim);
+fid = ifft(ifftshift(spec,dim),[],dim)*size(spec,dim);
 
 perm = [dim 1:(dim-1) (dim+1):numel(size(fid))];
 
