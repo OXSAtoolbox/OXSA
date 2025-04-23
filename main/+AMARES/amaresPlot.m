@@ -108,6 +108,14 @@ else
     firstOrderCorrection = 1;
 end
 
+%% Sanity checks to catch code that passes in exptParams.ppmAxis or exptParams.freqAxis wrong
+% These must be Npts x 1 vectors. Otherwise the code lower down will make a
+% massive grid of "residuals" resulting in slow plots. Reported in OXSA
+% issue #4.
+if isfield(exptParams,'freqAxis') && (numel(size(exptParams.freqAxis))~=2 || size(exptParams.freqAxis,2) ~= 1)
+    error('exptParams.freqAxis and exptParams.ppmAxis must be [Npts x 1] vectors. Check not accidentally transposed.')
+end
+
 %% Calculate the fixed spectra to plot
 
 timeAxis = exptParams.dwellTime*(0:exptParams.samples-1).';
