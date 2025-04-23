@@ -6,6 +6,8 @@ Release date: 2024-07-08
 
 Contact: ctr28@cam.ac.uk or chris@rodgers.org.uk
 
+Note that the Rodgers lab have an in-house version of OXSA ("RodgersSpectroTools") that contains many extensions particularly for use with Siemens 7T MRIs (Magnetom and Terra) on VB17 and VE-series software baselines but which is less clearly organised than OXSA. Please get in touch if this would help you.
+
 If you use this software in an academic publication, please include the following, or similar, text in your methods section:
 
 "OXSA Matlab code was used for analysis, as previously described [1]."
@@ -14,7 +16,14 @@ If you use this software in an academic publication, please include the followin
 
 If the included AMARES-based algorithm is used, the following paper should also be cited:
 
-Vanhamme L, van den Boogaart A, Van Huffel S. Improved method for accurate and efficient quantification of MRS data with use of prior knowledge. J Magn Reson. 1997; 129(1):35-43.
+Vanhamme L, van den Boogaart A, Van Huffel S. Improved method for accurate and efficient quantification of MRS data with use of prior knowledge. J Magn Reson. 1997; 129(1):35-43.  https://doi.org/10.1006/jmre.1997.1244
+
+AMARES builds on VARPRO so for deeper level modifications it will be very helpful to read:
+J W van der Veen 1, R de Beer, P R Luyten, D van Ormondt. Accurate quantification of in vivo 31P NMR signals using the variable projection method and prior knowledge. Magn Reson Med. 1988 Jan;6(1):92-8. https://doi.org/10.1002/mrm.1910060111
+
+Or this blog gives a readable introduction to VARPRO: https://geo-ant.github.io/blog/2020/variable-projection-part-1-fundamentals/
+
+## License
 
 This is released for NON-COMMERCIAL USE ONLY. See LICENSE.TXT for further details.
 
