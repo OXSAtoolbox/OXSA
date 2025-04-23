@@ -1,4 +1,9 @@
-% testAMARES.m
+% test_issue4_and_5.m
+%
+% Note this is a user contributed script. We are grateful for the testcase.
+% BUT please be aware that not all values defined here agree with the
+% conventions used in OXSA so it would be better to use other functions as
+% a starting point for new code.
 
 run('../startup')
 
