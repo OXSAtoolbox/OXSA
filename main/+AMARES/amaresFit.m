@@ -153,7 +153,7 @@ end
 
 if nargout == 4
     CRBResults = AMARES.estimateCRB(exptParams.imagingFrequency, exptParams.dwellTime, exptParams.beginTime, noise_var, xFit, constraintsCellArray);
-else
+elseif ~isfield(options,'quiet') || ~options.quiet
     disp('CRBs not calculated, add optional 4th output argument to call to calculate.')
 end
 

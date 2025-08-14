@@ -14,25 +14,25 @@ function [constraintsCellArray] = createModelConstraints(pk, optimIndex)
 
 % optimIndex is a cell containing the peak indices in the first row, and
 % the parameter indices in the second.
-numPeaks = size(optimIndex,2);
-numCompounds = numel(pk.priorKnowledge);
+numParams = size(optimIndex,2);
+numPeaks = numel(pk.priorKnowledge);
 
 chemShift_fun = {};
 linewidth_fun = {};
 sigma_fun = {};
 amplitude_fun = {};
 phase_fun = {};
-multiplet_count = 0;
+multiplet_count = 0; % index shift corresponding to number of multiplets minus first peak in each multiplet
 
-for compoundDx = 1:numCompounds
+for peakDx = 1:numPeaks
     %
-    if isempty(pk.priorKnowledge(compoundDx).multiplet)
+    if isempty(pk.priorKnowledge(peakDx).multiplet)
         
         maxMultipletDx = 1;
         
-    elseif ~isempty(pk.priorKnowledge(compoundDx).multiplet)
+    elseif ~isempty(pk.priorKnowledge(peakDx).multiplet)
         
-        maxMultipletDx = numel(pk.priorKnowledge(compoundDx).multiplet);
+        maxMultipletDx = numel(pk.priorKnowledge(peakDx).multiplet);
         
     end
     
@@ -43,119 +43,123 @@ for compoundDx = 1:numCompounds
         end
         %%   If bounds are empty, constrain to initial value
         
-        if isempty(pk.bounds(compoundDx).chemShift) && ~isempty(pk.initialValues(compoundDx).chemShift)
-            chemShift_fun{compoundDx + multiplet_count} = {'@(a)a;',pk.initialValues(compoundDx).chemShift}; %#ok<*AGROW>
+        if isempty(pk.bounds(peakDx).chemShift) && ~isempty(pk.initialValues(peakDx).chemShift)
+            chemShift_fun{peakDx+multiplet_count} = {'@(a)a;',pk.initialValues(peakDx).chemShift}; %#ok<*AGROW>
         end
         
-        if isempty(pk.bounds(compoundDx).linewidth) && ~isempty(pk.initialValues(compoundDx).linewidth)
-            linewidth_fun{compoundDx + multiplet_count} = {'@(a)a;',pk.initialValues(compoundDx).linewidth};
+        if isempty(pk.bounds(peakDx).linewidth) && ~isempty(pk.initialValues(peakDx).linewidth)
+            linewidth_fun{peakDx+multiplet_count} = {'@(a)a;',pk.initialValues(peakDx).linewidth};
         end
-        if isfield(pk.bounds(compoundDx),'sigma')&&isfield(pk.initialValues(compoundDx),'sigma')&&isempty(pk.bounds(compoundDx).sigma) && ~isempty(pk.initialValues(compoundDx).sigma)
+        if isfield(pk.bounds(peakDx),'sigma')&&isfield(pk.initialValues(peakDx),'sigma')&&isempty(pk.bounds(peakDx).sigma) && ~isempty(pk.initialValues(peakDx).sigma)
             % Sigma is not present in all PK, so check first.
-            sigma_fun{compoundDx + multiplet_count} = {'@(a)a;',pk.initialValues(compoundDx).sigma};
+            sigma_fun{peakDx+multiplet_count} = {'@(a)a;',pk.initialValues(peakDx).sigma};
         else
             % Set Gaussian linewidth to zero
-            sigma_fun{compoundDx + multiplet_count} = {'@(a)a;',0};
+            sigma_fun{peakDx+multiplet_count} = {'@(a)a;',0};
         end
-        if isempty(pk.bounds(compoundDx).amplitude) && ~isempty(pk.initialValues(compoundDx).amplitude)
-            amplitude_fun{compoundDx + multiplet_count} = {'@(a)a;',pk.initialValues(compoundDx).amplitude};
+        if isempty(pk.bounds(peakDx).amplitude) && ~isempty(pk.initialValues(peakDx).amplitude)
+            amplitude_fun{peakDx+multiplet_count} = {'@(a)a;',pk.initialValues(peakDx).amplitude};
         end
-        if isempty(pk.bounds(compoundDx).phase) && ~isempty(pk.initialValues(compoundDx).phase)
-            phase_fun{compoundDx + multiplet_count} = {'@(a)a;',pk.initialValues(compoundDx).phase};
+        if isempty(pk.bounds(peakDx).phase) && ~isempty(pk.initialValues(peakDx).phase)
+            phase_fun{peakDx+multiplet_count} = {'@(a)a;',pk.initialValues(peakDx).phase};
         end
         
         %%   Loop through peaks and parameters
         
-        for peakDx = 1:numPeaks
-            if optimIndex{1,peakDx}==compoundDx && strcmp(optimIndex{2,peakDx},'chemShift')
+        for paramDx = 1:numParams
+            if strcmp(optimIndex{2,paramDx},'chemShift') && ... parameter is chemShift
+                    optimIndex{1,paramDx}==peakDx % parameter corresponds to current peak
                 
                % Set chemical shift prior
                
-                if ~isempty(pk.priorKnowledge(compoundDx).multiplet)
+                if ~isempty(pk.priorKnowledge(peakDx).multiplet) % peak is a multiplet
                     
-                    if ~isempty(pk.priorKnowledge(compoundDx).chemShiftDelta) && isempty(pk.bounds(compoundDx).chemShiftDelta)
-                        chemShiftDelta = pk.priorKnowledge(compoundDx).chemShiftDelta;
-                        chemShift_fun{compoundDx+multiplet_count} = {'@(x,a,b)x(a)+b;',peakDx,(multipletDx-1)*chemShiftDelta};
-                    else
-                        for relPeakDx = 1:numPeaks
-                            if (isempty(pk.priorKnowledge(compoundDx).G_chemShiftDelta) && optimIndex{1,relPeakDx}==compoundDx && strcmp(optimIndex{2,relPeakDx},'chemShiftDelta')) || ...
-                                    (~isempty(pk.priorKnowledge(compoundDx).G_chemShiftDelta) && optimIndex{1,relPeakDx}==pk.priorKnowledge(compoundDx).G_chemShiftDelta && strcmp(optimIndex{2,relPeakDx},'chemShiftDelta'))
-                                chemShift_fun{compoundDx+multiplet_count} = {'@(x,a,b,c)x(a)+b*x(c);',peakDx,(multipletDx-1),relPeakDx};
+                    if ~isempty(pk.priorKnowledge(peakDx).chemShiftDelta) && isempty(pk.bounds(peakDx).chemShiftDelta) % chemShiftDelta is constrained to prior knowledge (prior knowledge & no bounds)
+                        chemShift_fun{peakDx+multiplet_count} = {'@(x,a,b)x(a)+b;',paramDx,(multipletDx-1)*pk.priorKnowledge(peakDx).chemShiftDelta};
+                    else % chemShiftDelta is not constrained to prior knowledge (no prior knowledge &/or bounded)
+                        for relParamDx = 1:numParams
+                            if strcmp(optimIndex{2,relParamDx},'chemShiftDelta') && ... relParameter is chemShiftDelta
+                                    ((isempty(pk.priorKnowledge(peakDx).G_chemShiftDelta) && optimIndex{1,relParamDx}==peakDx) || ... peak chemShiftDelta is not grouped & relParameter corresponds to current peak
+                                    (~isempty(pk.priorKnowledge(peakDx).G_chemShiftDelta) && optimIndex{1,relParamDx}==pk.priorKnowledge(peakDx).G_chemShiftDelta)) % peak chemShiftDelta is grouped & relParameter corresponds to chemShiftDelta group peak
+                                chemShift_fun{peakDx+multiplet_count} = {'@(x,a,b,c)x(a)+b*x(c);',paramDx,(multipletDx-1),relParamDx};
                             end
                         end
                     end
                     
-                else
+                else % peak is a singlet
                     
-                    chemShift_fun{compoundDx+multiplet_count} = {'@(x,a)x(a);',peakDx};
+                    chemShift_fun{peakDx+multiplet_count} = {'@(x,a)x(a);',paramDx};
                     
                 end
                 
-            elseif (isempty(pk.priorKnowledge(compoundDx).G_linewidth) && optimIndex{1,peakDx}==compoundDx && strcmp(optimIndex{2,peakDx},'linewidth')) || ...
-                    (~isempty(pk.priorKnowledge(compoundDx).G_linewidth) && optimIndex{1,peakDx}==pk.priorKnowledge(compoundDx).G_linewidth && strcmp(optimIndex{2,peakDx},'linewidth'))
+            elseif strcmp(optimIndex{2,paramDx},'linewidth') && ... parameter is linewidth
+                    ((isempty(pk.priorKnowledge(peakDx).G_linewidth) && optimIndex{1,paramDx}==peakDx) || ... peak linewidth is not grouped & parameter corresponds to current peak
+                    (~isempty(pk.priorKnowledge(peakDx).G_linewidth) && optimIndex{1,paramDx}==pk.priorKnowledge(peakDx).G_linewidth)) % peak linewidth is grouped & parameter corresponds to linewidth group peak
                 
                 % Set lorenztian linewidth prior
                 
-                if isfield(pk.priorKnowledge(compoundDx),'base_linewidth') && ~isempty(pk.priorKnowledge(compoundDx).base_linewidth)
+                if isfield(pk.priorKnowledge(peakDx),'base_linewidth') && ~isempty(pk.priorKnowledge(peakDx).base_linewidth) % prior knowledge of base_linewidth is present
                     % LP: If we know the T2, then ADD this intrinsic linewidth to that being fitted.
-                    linewidth_fun{compoundDx+multiplet_count} = {'@(x,a,b)x(a)+b;',peakDx,pk.priorKnowledge(compoundDx).base_linewidth};
-                else
+                    linewidth_fun{peakDx+multiplet_count} = {'@(x,a,b)x(a)+b;',paramDx,pk.priorKnowledge(peakDx).base_linewidth};
+                else % no prior knowledge of base_linewidth
                     % Normal mode
-                    linewidth_fun{compoundDx+multiplet_count} = {'@(x,a)x(a);',peakDx};
+                    linewidth_fun{peakDx+multiplet_count} = {'@(x,a)x(a);',paramDx};
                     
                 end
                        
-            elseif (isempty(pk.priorKnowledge(compoundDx).G_amplitude) && optimIndex{1,peakDx}==compoundDx && strcmp(optimIndex{2,peakDx},'amplitude')) || ...
-                    (~isempty(pk.priorKnowledge(compoundDx).G_amplitude) && optimIndex{1,peakDx}==pk.priorKnowledge(compoundDx).G_amplitude && strcmp(optimIndex{2,peakDx},'amplitude'))
+            elseif strcmp(optimIndex{2,paramDx},'amplitude') && ... parameter is amplitude
+                    ((isempty(pk.priorKnowledge(peakDx).G_amplitude) && optimIndex{1,paramDx}==peakDx) || ... peak amplitude is not grouped & parameter corresponds to current peak
+                    (~isempty(pk.priorKnowledge(peakDx).G_amplitude) && optimIndex{1,paramDx}==pk.priorKnowledge(peakDx).G_amplitude)) % peak amplitude is grouped & parameter corresponds to amplitude group peak
                 
                 % Set amplitude prior
                 
-                if ~isempty(pk.priorKnowledge(compoundDx).multiplet)&&pk.priorKnowledge(compoundDx).multiplet(multipletDx) ~= 0
+                if ~isempty(pk.priorKnowledge(peakDx).multiplet) && pk.priorKnowledge(peakDx).multiplet(multipletDx)~=0 % peak is a multiplet & multiplet is affected by amplitudeRatio (i.e. non-zero)
                     
                     % Assign relative amplitudes to multiplet peaks
                     
-                    if ~isempty(pk.priorKnowledge(compoundDx).amplitudeRatio) && isempty(pk.bounds(compoundDx).amplitudeRatio)
-                        amplitudeRatio = pk.priorKnowledge(compoundDx).amplitudeRatio;
-                        amplitude_fun{compoundDx+multiplet_count} = {'@(x,a,b)x(a)*b;',peakDx,amplitudeRatio};
-                    else
-                        for relPeakDx = 1:numPeaks
-                            % Loop through peaks to find the one that this
-                            % peak will be constrained to.
-                            if optimIndex{1,relPeakDx}==compoundDx && strcmp(optimIndex{2,relPeakDx},'amplitudeRatio')
-                                amplitude_fun{compoundDx+multiplet_count} = {'@(x,a,b)x(a)*x(b);',relPeakDx,peakDx};
+                    if ~isempty(pk.priorKnowledge(peakDx).amplitudeRatio) && isempty(pk.bounds(peakDx).amplitudeRatio) % amplitudeRatio is constrained to prior knowledge (prior knowledge & no bounds)
+                        amplitude_fun{peakDx+multiplet_count} = {'@(x,a,b)x(a)*b;',paramDx,pk.priorKnowledge(peakDx).amplitudeRatio};
+                    else % amplitudeRatio is not constrained to prior knowledge (prior knowledge &/or bounded)
+                        for relParamDx = 1:numParams
+                            % Loop through peaks to find the one that this peak will be constrained to
+                            if strcmp(optimIndex{2,relParamDx},'amplitudeRatio') && ... relParameter is amplitudeRatio
+                                    optimIndex{1,relParamDx}==peakDx % relParameter corresponds to current peak
+                                amplitude_fun{peakDx+multiplet_count} = {'@(x,a,b)x(a)*x(b);',relParamDx,paramDx};
                             end
                         end
                     end
                     
-                else
-                    amplitude_fun{compoundDx+multiplet_count} = {'@(x,a)x(a);',peakDx};
+                else % peak is singlet or unaffected by amplitudeRatio (i.e. zero)
+                    amplitude_fun{peakDx+multiplet_count} = {'@(x,a)x(a);',paramDx};
                 end
                 
-            elseif (isempty(pk.priorKnowledge(compoundDx).G_phase) && optimIndex{1,peakDx}==compoundDx && strcmp(optimIndex{2,peakDx},'phase')) || ...
-                    (~isempty(pk.priorKnowledge(compoundDx).G_phase) && optimIndex{1,peakDx}==pk.priorKnowledge(compoundDx).G_phase && strcmp(optimIndex{2,peakDx},'phase'))
+            elseif strcmp(optimIndex{2,paramDx},'phase') && ... parameter is phase
+                    ((isempty(pk.priorKnowledge(peakDx).G_phase) && optimIndex{1,paramDx}==peakDx) || ... peak phase is not grouped & parameter corresponds to current peak
+                    (~isempty(pk.priorKnowledge(peakDx).G_phase) && optimIndex{1,paramDx}==pk.priorKnowledge(peakDx).G_phase)) % peak phase is grouped & parameter corresponds to phase group peak
                 
                 % Set phase prior
                 
-                if isfield(pk.priorKnowledge(compoundDx),'RelPhase') && ~isempty(pk.priorKnowledge(compoundDx).RelPhase)
+                if isfield(pk.priorKnowledge(peakDx),'RelPhase') && ~isempty(pk.priorKnowledge(peakDx).RelPhase) % prior knowledge of RelPhase is present
                     
                     %WTC: To enable relative phase shifts.
-                    phase_fun{compoundDx+multiplet_count} = {'@(x,a,b)x(a)+b;',peakDx,pk.priorKnowledge(compoundDx).RelPhase};
+                    phase_fun{peakDx+multiplet_count} = {'@(x,a,b)x(a)+b;',paramDx,pk.priorKnowledge(peakDx).RelPhase};
                     
-                else
+                else % no prior knowledge of RelPhase
                     
                     % Normal mode
-                    phase_fun{compoundDx+multiplet_count} = {'@(x,a)x(a);',peakDx};
+                    phase_fun{peakDx+multiplet_count} = {'@(x,a)x(a);',paramDx};
                     
                 end
                 
                        
-            elseif ((~isfield(pk.priorKnowledge(compoundDx),'G_sigma')||isempty(pk.priorKnowledge(compoundDx).G_sigma)) && optimIndex{1,peakDx}==compoundDx && strcmp(optimIndex{2,peakDx},'sigma')) || ...
-                    ((isfield(pk.priorKnowledge(compoundDx),'G_sigma')&&~isempty(pk.priorKnowledge(compoundDx).G_sigma)) && optimIndex{1,peakDx}==pk.priorKnowledge(compoundDx).G_sigma && strcmp(optimIndex{2,peakDx},'sigma'))
+            elseif strcmp(optimIndex{2,paramDx},'sigma') && ... parameter is sigma
+                    (((~isfield(pk.priorKnowledge(peakDx),'G_sigma')||isempty(pk.priorKnowledge(peakDx).G_sigma)) && optimIndex{1,paramDx}==peakDx) || ... peak sigma is not grouped & parameter corresponds to current peak
+                    ((isfield(pk.priorKnowledge(peakDx),'G_sigma')&&~isempty(pk.priorKnowledge(peakDx).G_sigma)) && optimIndex{1,paramDx}==pk.priorKnowledge(peakDx).G_sigma)) % peak sigma is grouped & parameter corresponds to sigma group peak
                 
                 % Set Gaussian lineshape prior
                 
-                if isfield(pk.bounds(compoundDx),'sigma')&&~isempty(pk.bounds(compoundDx).sigma)
-                    sigma_fun{compoundDx+multiplet_count} = {'@(x,a)x(a);',peakDx};
+                if isfield(pk.bounds(peakDx),'sigma')&&~isempty(pk.bounds(peakDx).sigma) % sigma is bounded
+                    sigma_fun{peakDx+multiplet_count} = {'@(x,a)x(a);',paramDx};
                 end
                 
             end

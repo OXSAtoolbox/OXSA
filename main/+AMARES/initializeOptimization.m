@@ -35,23 +35,23 @@ paramIndex = {};
 counter = 1;
 for f = 1:numBounds
     group = 0;
-    inc = 0;
+    inc = 0; % appears to be unused
     for p = 1:numPeaks
-        if ~isempty(pk.bounds(p).(Bounds{f})) && isnumeric(pk.bounds(p).(Bounds{f}))
-            if isfield(pk.priorKnowledge,['G_' Bounds{f}]) && ~isempty(pk.priorKnowledge(p).(['G_' Bounds{f}])) && group == pk.priorKnowledge(p).(['G_' Bounds{f}])               
+        if ~isempty(pk.bounds(p).(Bounds{f})) && isnumeric(pk.bounds(p).(Bounds{f})) % bounds field is a non-empty numeric
+            if isfield(pk.priorKnowledge,['G_' Bounds{f}]) && ~isempty(pk.priorKnowledge(p).(['G_' Bounds{f}])) && group == pk.priorKnowledge(p).(['G_' Bounds{f}]) % boundsfield is grouped with current group
                % inc = inc+1;   
             else
-                if isfield(pk.priorKnowledge,['G_' Bounds{f}]) && ~isempty(pk.priorKnowledge(p).(['G_' Bounds{f}])) && group ~= pk.priorKnowledge(p).(['G_' Bounds{f}])
+                if isfield(pk.priorKnowledge,['G_' Bounds{f}]) && ~isempty(pk.priorKnowledge(p).(['G_' Bounds{f}])) && group ~= pk.priorKnowledge(p).(['G_' Bounds{f}]) % bounds field is grouped, but not with current group
                     group = pk.priorKnowledge(p).(['G_' Bounds{f}]);
                 end
-                if isfield(pk.initialValues, Bounds{f})
-                    if ~isempty(pk.initialValues(p).(Bounds{f}))
+                if isfield(pk.initialValues, Bounds{f}) % bounds field is associated with an initial value field
+                    if ~isempty(pk.initialValues(p).(Bounds{f})) % field has an initial value
                         optimInit(counter) = pk.initialValues(p).(Bounds{f});
                     else
                         optimInit(counter) = mean(pk.bounds(p).(Bounds{f}));
                     end
-                elseif isfield(pk.priorKnowledge, Bounds{f})
-                    if ~isempty(pk.priorKnowledge(p).(Bounds{f}))
+                elseif isfield(pk.priorKnowledge, Bounds{f}) % bounds field is associated with a prior knowledge field
+                    if ~isempty(pk.priorKnowledge(p).(Bounds{f})) % field has prior knowledge
                         optimInit(counter) = pk.priorKnowledge(p).(Bounds{f});
                     else
                         optimInit(counter) = mean(pk.bounds(p).(Bounds{f}));

@@ -22,8 +22,10 @@ for p = 1:numel(pk.initialValues)
         if ~isempty(Bfield) && isnumeric(Bfield)
             if numel(Bfield) ~= 2
                 error('Specify lower and upper pk.bounds for %s', B_fn{f})
-            elseif Bfield(1)==Bfield(2) || Bfield(1)>Bfield(2)
+            elseif Bfield(1)==Bfield(2)
                 error('Lower and upper pk.bounds for %s cannot be equal', B_fn{f})
+            elseif Bfield(1)>Bfield(2)
+                error('Upper pk.bounds for %s cannot be smaller than lower pk.bounds', B_fn{f})
             elseif isfield(pk.initialValues, B_fn{f})
                 if ~(pk.initialValues(p).(B_fn{f}) >= Bfield(1) && pk.initialValues(p).(B_fn{f}) <= Bfield(2))
                     error('The initial value for %s in {pk.initialValues} is out of pk.bounds', B_fn{f})
@@ -62,18 +64,18 @@ end
 %% Display
 % display initial values
 IVcell2D = prepForDisp(pk.initialValues);
-fprintf('\n\t initial values for %d peaks\n\n', numel(pk.initialValues))
-disp(IVcell2D)
+% fprintf('\n\t initial values for %d peaks\n\n', numel(pk.initialValues))
+% disp(IVcell2D)
 
 % display prior knowledge
 PKcell2D = prepForDisp(pk.priorKnowledge);
-fprintf('\n\t prior knowledge for %d peaks\n\n', numel(pk.initialValues))
-disp(PKcell2D)
+% fprintf('\n\t prior knowledge for %d peaks\n\n', numel(pk.initialValues))
+% disp(PKcell2D)
 
 %display upper and lower pk.bounds
 Bcell2D = prepForDisp(pk.bounds);
-fprintf('\n\t upper and lower bounds for %d peaks\n\n', numel(pk.initialValues))
-disp(Bcell2D)
+% fprintf('\n\t upper and lower bounds for %d peaks\n\n', numel(pk.initialValues))
+% disp(Bcell2D)
 
 end
 

@@ -99,7 +99,9 @@ if ~isfield(options,'firstOrder') || options.firstOrder % On by default
         zeroOrderPhaseRad = 0;
     end
     
-    fprintf('zeroOrderPhaseRad = %.3f\n',zeroOrderPhaseRad)
+    if ~isfield(options,'quiet') || ~options.quiet
+        fprintf('zeroOrderPhaseRad = %.3f\n',zeroOrderPhaseRad)
+    end
     
     % N.B. Careful... freqAxis here MUST NOT contain any frequency offset.
     % It must be centred at the actual acquisition centre frequency.

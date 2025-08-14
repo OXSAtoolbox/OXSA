@@ -59,9 +59,11 @@ lastwarn('');
 % Don't show message for singular matrix
 warn_state = warning('off' , 'MATLAB:singularMatrix');
 warn_state_c = onCleanup(@() warning(warn_state)); % reset when this is cleared
+warn_state2 = warning('off', 'MATLAB:nearlySingularMatrix'); % Do the same thing for nearly singular
+warn_state2_c = onCleanup(@() warning(warn_state2));
 CRB.covariance = mP*(Fishernum\mP');
 [~, msgid] = lastwarn;
-clear warn_state_c warn_state
+clear warn_state_c warn_state warn_state2_c warn_state2
 
 % But still if there was a singular matrix warning then
 if strcmp(msgid,'MATLAB:singularMatrix')
