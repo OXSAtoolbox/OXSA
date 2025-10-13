@@ -139,12 +139,12 @@ for peakDx = 1:numPeaks
                 
                 % Set phase prior
                 
-                if isfield(pk.priorKnowledge(peakDx),'RelPhase') && ~isempty(pk.priorKnowledge(peakDx).RelPhase) % prior knowledge of RelPhase is present
+                if isfield(pk.priorKnowledge(peakDx),'base_phase') && ~isempty(pk.priorKnowledge(peakDx).base_phase) % prior knowledge of base_phase is present
                     
                     %WTC: To enable relative phase shifts.
-                    phase_fun{peakDx+multiplet_count} = {'@(x,a,b)x(a)+b;',paramDx,pk.priorKnowledge(peakDx).RelPhase};
+                    phase_fun{peakDx+multiplet_count} = {'@(x,a,b)x(a)+b;',paramDx,pk.priorKnowledge(peakDx).base_phase};
                     
-                else % no prior knowledge of RelPhase
+                else % no prior knowledge of base_phase
                     
                     % Normal mode
                     phase_fun{peakDx+multiplet_count} = {'@(x,a)x(a);',paramDx};

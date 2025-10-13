@@ -48,7 +48,7 @@ values.IVCellArray = {...
 
 %% 
 fields.PK = {
-'peakName',                             'multiplet',     'chemShiftDelta',   'amplitudeRatio',    'G_linewidth',   'G_amplitude',    'G_phase'  ,'RelPhase'   'G_chemShiftDelta',   'refPeak'};
+'peakName',                             'multiplet',     'chemShiftDelta',   'amplitudeRatio',    'G_linewidth',   'G_amplitude',    'G_phase'  ,'base_phase'   'G_chemShiftDelta',   'refPeak'};
 values.PKCellArray = {...
 {'ATP_BETA1','ATP_BETA2','ATP_BETA3'},      [1,0,1],            15 / 49.898,  0.5,                 [],            [],               1,    [] ,      [],                    0;
 {'ATP_ALPHA1','ATP_ALPHA2'},                  [0,0],            16 / 49.898,  [],                  [],            [],               1,    [] ,      [],                    0;
