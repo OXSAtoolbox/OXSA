@@ -20,7 +20,11 @@ function [derivedParamVal, CRB] = estimateDerivedParamAndCRB(pk, xFit, constrain
 % prior = struct('pk',AMARES.priorKnowledge.PK_3T_Cardiac());
 % res = AMARES.amaresDriver(obj,'type','voxel','prior',prior,'forceFitAgain',true);
 % CRB = AMARES.estimateCRB(res{1}.fitStatus{1}.exptParams.imagingFrequency, res{1}.fitStatus{1}.exptParams.dwellTime, res{1}.fitStatus{1}.exptParams.beginTime, res{1}.fitStatus{1}.noise_var, res{1}.fitStatus{1}.xFit, res{1}.fitStatus{1}.constraintsCellArray)
-% [ratio_vals, ratio_crbs] = AMARES.estimateDerivedParamAndCRB(res{1}.fitStatus{1}.pkWithLinLsq, res{1}.fitStatus{1}.xFit, res{1}.fitStatus{1}.constraintsCellArray,CRB.covariance,{'PCR_am / (ATP_GAMMA1_am + ATP_GAMMA2_am)','PCR_am / ((ATP_ALPHA1_am + ATP_ALPHA2_am + ATP_BETA1_am + ATP_BETA2_am + ATP_BETA3_am + ATP_GAMMA1_am + ATP_GAMMA2_am)/3)'})
+% [ratio_vals, ratio_crbs] = AMARES.estimateDerivedParamAndCRB(res{1}.fitStatus{1}.pkWithLinLsq, ...
+%                                                              res{1}.fitStatus{1}.xFit, ...
+%                                                              res{1}.fitStatus{1}.constraintsCellArray, ...
+%                                                              CRB.covariance, ...
+%                                                              {'PCR_am / (ATP_GAMMA1_am + ATP_GAMMA2_am)','PCR_am / ((ATP_ALPHA1_am + ATP_ALPHA2_am + ATP_BETA1_am + ATP_BETA2_am + ATP_BETA3_am + ATP_GAMMA1_am + ATP_GAMMA2_am)/3)'})
 
 if ~exist('extraParamStr','var')
     extraParamStr = {};
@@ -105,7 +109,7 @@ else
     derivedParamVal = NaN(size(derivedParamStr));
     CRB = NaN(size(derivedParamStr));
     for paramDx = 1:numel(derivedParamStr)
-        derivedParam = sym(derivedParamStr{paramDx});
+        derivedParam = str2sym(derivedParamStr{paramDx});
         
         % Cache anonymous Matlab function handles for future runs / deployed mode
         derivedParam_MFunc{paramDx} = matlabFunction(derivedParam);
