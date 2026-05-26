@@ -5,9 +5,10 @@ function [derivedParamVal, CRB] = estimateDerivedParamAndCRB(pk, xFit, constrain
 % parameter to compute.
 %
 % ..._cs is a peak chemical shift
-% ..._lw is a peak linewidth
+% ..._lw is a peak linewidth (Lorentzian linewidth)
 % ..._am is a peak amplitude
 % ..._ph is a peak phase
+% ..._sg is a peak sigma (Gaussian linewidth)
 %
 % extraParamStr is a cell array of strings specifying external (non-fitted)
 %        parameters e.g. saturation factors.

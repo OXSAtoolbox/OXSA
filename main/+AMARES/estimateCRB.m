@@ -14,7 +14,7 @@ function [CRB] = estimateCRB(imagingFrequency, dwellTime, beginTime, noiseVarian
 % Output:
 % 
 % CRB.chemShift etc - CRBs for each parameter.
-% CRB.covariance - Full covariance matrix for all model parameters.
+% CRB.covariance - Full covariance matrix for all model parameters. Arrangement: peak1param1 peak1param2 ... peak2param1 peak2param2 ... peakNparamM
 %
 % EXAMPLE:
 %
