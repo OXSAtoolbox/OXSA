@@ -90,6 +90,12 @@ if isfield(options,'MaxIter')
 else
     fitOpt.MaxIter = 100;
 end
+
+if isfield(options,'TolX')
+    fitOpt.TolX = options.TolX;
+else
+    fitOpt.TolX = 1e-6;
+end
 fitOpt.Jacobian = 'on';
 fitOpt.PrecondBandWidth = 0;
 fitOpt.Display = 'none';
