@@ -79,7 +79,7 @@ if isfield(options,'hFig')
     figure(hFig)
     clf
 else
-    hFig = figure;
+    hFig = figure(Theme='light');
 end
 
 %% Apply prior knowledge to yield full solution
@@ -88,7 +88,7 @@ fitResults = AMARES.applyModelConstraints(xFit,constraintsCellArray);
 %% Calculate the zero and first order phase correction
 if ~isfield(options,'firstOrder') || options.firstOrder % On by default
     if ~isfield(exptParams,'freqAxis')
-        exptParams.freqAxis = exptParams.ppmAxis * exptParams.imagingFrequency;
+        exptParams.freqAxis = exptParams.ppmAxis*exptParams.imagingFrequency;
     end
     
     % Set zero-order phase relative to the reference peak

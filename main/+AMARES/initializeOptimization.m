@@ -32,8 +32,15 @@ optimUBounds = [];
 peakIndex = [];
 paramIndex = {};
 
+% Skip peak name, if applicable
+if strcmp(Bounds{1}, 'peakName')
+    F = 2;
+else
+    F = 1;
+end
+
 counter = 1;
-for f = 1:numBounds
+for f = F:numBounds
     group = 0;
     inc = 0; % appears to be unused
     for p = 1:numPeaks
