@@ -161,32 +161,33 @@ subplots = 1;
 if ~isfield(options,'plotIndividual') || options.plotIndividual % On by default
     subplots = subplots + 1;
     
-    % Individual peaks
+    % Individual peak plot
     hAx(end+1) = subplotSetBorder(totalPlots,1,element,overall,subplots);
     
-    indivColours = distinguishable_colors(numel(fitResults.chemShift));
-    
-    
+    % Individual peaks
+    modelSpecs = zeros(size(modelFids),'like',modelFids);
     for peakDx = 1:numel(fitResults.chemShift)
+        indivFID = modelFids(:,peakDx);
+        indivSpectrum = specApodize(timeAxis,specFft(indivFID).*firstOrderCorrection,options.apodization);
+        modelSpecs(:,peakDx) = indivSpectrum;
+    end
+    
+    % Combine multiplets by default
+    if ~isfield(options,'plotIndividualMultiplets') || options.plotIndividualMultiplets
+        fitResults = AMARES.applyModelConstraints(xFit,constraintsCellArray);
+        [peakPlotIndices, ~, ~, modelSpecs] = AMARES.rangePeak(fitResults, options, modelSpecs); % Also calculate the points to plot over so we don't end up with lots of baselines overlapping
+        np = size(modelSpecs,2);
+    else
+        np = numel(fitResults.chemShift);
+    end
+
+    indivColours = distinguishable_colors(np);
+    
+    for peakDx = 1:np
         hold on
 
-        indivFID = modelFids(:,peakDx);
-  
-        indivSpectrum = specApodize(timeAxis,specFft(indivFID).*firstOrderCorrection,options.apodization);
-        
-        %Calculate the points to plot over so we don't end up with lots of
-        %baselines overlapping
-        [~,peakCentreIndex] =  min(abs((exptParams.ppmAxis) - fitResults.chemShift(peakDx)));
-        hzPerPoint = (1/exptParams.dwellTime)/exptParams.samples;
-        
-        plotPeakWidth = 2.5*round(fitResults.linewidth(peakDx)+2*sqrt(2*log(2))*fitResults.sigma(peakDx)/hzPerPoint);
-        peakPlotIndex = [floor(peakCentreIndex-plotPeakWidth) ceil(peakCentreIndex+plotPeakWidth)];
-        if peakPlotIndex(1)<1
-            peakPlotIndex(1) = 1;
-        end
-        if peakPlotIndex(2) > exptParams.samples
-            peakPlotIndex(2) = exptParams.samples;
-        end
+        indivSpectrum = modelSpecs(:,peakDx);
+        peakPlotIndex = peakPlotIndices{peakDx}([1 end]);
         
         plot(xAxis(peakPlotIndex(1):peakPlotIndex(2)),real(indivSpectrum(peakPlotIndex(1):peakPlotIndex(2))),'color',indivColours(peakDx,:))
     end
