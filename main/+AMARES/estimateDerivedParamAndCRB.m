@@ -1,4 +1,4 @@
-function [derivedParamVal, CRB] = estimateDerivedParamAndCRB(pk, xFit, constraintsCellArray, CRB_covariance_in, derivedParamStr, extraParamStr, extraParamVals)
+function [derivedParamVal, CRB] = estimateDerivedParamAndCRB(pk, xFit, constraintsCellArray, CRB_covariance_in, derivedParamStr, extraParamStr, extraParamVals, verbose)
 % Calculate the CRB for a derived parameter with help from the symbolic maths toolbox.
 %
 % derivedParamStr is a cell array of strings specifying the derived
@@ -15,6 +15,9 @@ function [derivedParamVal, CRB] = estimateDerivedParamAndCRB(pk, xFit, constrain
 %
 % extraParamVals is a double vector with the values of the parameters in
 %        extraParamStr.
+%
+% verbose is a logical scalar indicating whether or not to print results in
+%        command window
 %
 % EXAMPLE:
 %
@@ -33,6 +36,10 @@ end
 
 if ~exist('extraParamVals','var')
     extraParamVals = [];
+end
+
+if ~exist('verbose','var')
+    verbose = true;
 end
 
 if ~iscell(derivedParamStr)
@@ -87,7 +94,6 @@ if ~isempty(derivedParam_MFunc) && ~isempty(Jsym_MFunc)
         Jnum = Jsym_MFunc{paramDx}(valueArray{:});
         
         CRB(paramDx) = sqrt(Jnum*CRB_covariance_in*Jnum');
-        fprintf('= %.3f (SD %.3f = %.1f%%) [%s]\n',derivedParamVal(paramDx),CRB(paramDx),100*CRB(paramDx)/derivedParamVal(paramDx),derivedParamStr{paramDx})
     end
     
 else
@@ -129,11 +135,17 @@ else
         Jnum = subs(Jsym,[allParams{:,2}],[allParams{:,5}]);
         
         CRB(paramDx) = sqrt(Jnum*CRB_covariance_in*Jnum');
-        fprintf('= %.3f (SD %.3f = %.1f%%) [%s]\n',derivedParamVal(paramDx),CRB(paramDx),100*CRB(paramDx)/derivedParamVal(paramDx),derivedParamStr{paramDx})
     end
     
     % Save anonymous function cache
     AMARES.estimateDerivedParamAndCRB_saveCached(pk, constraintsCellArray, derivedParamStr, extraParamStr, derivedParam_MFunc, Jsym_MFunc);
+end
+
+% Print results
+if verbose
+    for paramDx = 1:numel(derivedParamStr)
+        fprintf('= %.3g (SD %.3g = %.1f%%) [%s]\n',derivedParamVal(paramDx),CRB(paramDx),100*CRB(paramDx)/derivedParamVal(paramDx),derivedParamStr{paramDx})
+    end
 end
 
 % %% Specific example...
