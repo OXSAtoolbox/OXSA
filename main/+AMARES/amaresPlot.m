@@ -80,6 +80,11 @@ if isfield(options,'hFig')
     clf
 else
     hFig = figure(Theme='light');
+
+    % Clean figure handle
+    FIGS = findall(groot);
+    FIGS(2).Name = ['OXSA' num2str(FIGS(2).Number-1)];
+    FIGS(2).NumberTitle = 'off';
 end
 
 %% Apply prior knowledge to yield full solution
