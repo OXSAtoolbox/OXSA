@@ -13,13 +13,13 @@ sigma = modelParams.sigma;
 % cs
 cs_deriv = bsxfun(@times,modelFids, 2i.*imagingFrequency.*pi.*tTrue);
 % lw
-lw_deriv = bsxfun(@times,modelFids, -pi * tTrue);
+lw_deriv = bsxfun(@times,modelFids, -pi * abs(tTrue));
 % am
 am_deriv = bsxfun(@times,modelFids, 1./amplitude(:).');
 % ph
 ph_deriv = modelFids * 1i*pi/180;
 % sg
-sg_deriv = bsxfun(@times,modelFids, -pi^2 .* tTrue.^2 *sigma);
+sg_deriv = bsxfun(@times,modelFids, -4*pi^2 .* tTrue.^2 *sigma);
 
 % Combine into canonical ordering...
 Jacobian = zeros(size(modelFids,1),5*size(cs_deriv,2));
