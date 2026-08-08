@@ -1,6 +1,11 @@
-function [testRes,testResStr] = test_compute_Jacobian_sigma()
-% Regression test for the sigma column of AMARES.compute_Jacobian.
+% Test: Regression test for the sigma column of AMARES.compute_Jacobian.
+% OXSA ISSUE #10
+% Chris Rodgers, Aug 2026
 
+classdef test_compute_Jacobian_sigma < matlab.unittest.TestCase
+methods(Test,TestTags={})
+
+function test1(testCase)
 imagingFrequency = 120.3;
 dwellTime = 1/2000;
 beginTime = 0.002;
@@ -28,12 +33,10 @@ modelParamsMinus.sigma = modelParams.sigma - delta;
 [modelFidMinus, ~] = AMARES.makeModelFid(modelParamsMinus, tTrue, imagingFrequency);
 
 finiteDifference = (modelFidPlus - modelFidMinus) / (2 * delta);
-relativeError = max(abs(sigmaColumn - finiteDifference)) / max(1, max(abs(finiteDifference)));
 
-if relativeError < 1e-7
-    testRes = 1;
-    testResStr = {'Sigma Jacobian finite-difference regression passed'};
-else
-    testRes = 0;
-    testResStr = {sprintf('Sigma Jacobian finite-difference regression failed (relative error %g)', relativeError)};
+verifyEqual(testCase, sigmaColumn, finiteDifference, 'RelTol', 1e-7)
+
+end
+
+end
 end
