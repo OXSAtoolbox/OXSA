@@ -6,7 +6,7 @@ function Jacobian = compute_Jacobian(modelFids, imagingFrequency, tTrue, modelPa
 
 % Derivatives are all of the form f(x) * ...
 %
-% See OXSA\documentation\ComputeJacobianElements.nb for derivation.
+% See documentation/ComputeJacobianElements.nb for derivation.
 
 amplitude = modelParams.amplitude;
 sigma = modelParams.sigma;
