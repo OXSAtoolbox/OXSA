@@ -220,6 +220,8 @@ classdef dicom < handle
                 case 'SIEMENS'
                     if isfield(obj.info{1},'SoftwareVersion')
                         SoftwareVersion = obj.info{1}.SoftwareVersion;
+                    elseif isfield(obj.info{1},'SoftwareVersions')
+                        SoftwareVersion = obj.info{1}.SoftwareVersions;
                     else
                         SoftwareVersion = '';
                     end;
