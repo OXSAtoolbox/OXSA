@@ -1,11 +1,12 @@
 function Jacobian = compute_Jacobian(modelFids, imagingFrequency, tTrue, modelParams)
-%Calculates the Jacobian for the fitting model
-%N.B. This does not include the P matrix
-%Lucian A. B. Purvis 2017
+% Calculates the Jacobian for the fitting model
+% N.B. This does not include the P matrix
+% Lucian A. B. Purvis 2017
+% Chris Rodgers 2026
 
 % Derivatives are all of the form f(x) * ...
 %
-% See ComputeJacobianElements.nb for derivation.
+% See documentation/ComputeJacobianElements.nb for derivation.
 
 amplitude = modelParams.amplitude;
 sigma = modelParams.sigma;
@@ -19,7 +20,7 @@ am_deriv = bsxfun(@times,modelFids, 1./amplitude(:).');
 % ph
 ph_deriv = modelFids * 1i*pi/180;
 % sg
-sg_deriv = bsxfun(@times,modelFids, -4*pi^2 .* tTrue.^2 *sigma);
+sg_deriv = bsxfun(@times,modelFids, -4 * pi^2 .* tTrue.^2 *sigma);
 
 % Combine into canonical ordering...
 Jacobian = zeros(size(modelFids,1),5*size(cs_deriv,2));
